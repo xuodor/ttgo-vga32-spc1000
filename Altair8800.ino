@@ -143,8 +143,6 @@
 
 // consts
 
-constexpr int DefaultCPU         = 1;   // 0 = i8080, 1 = Z80
-
 constexpr int DefaultTermIndex   = 2;   // Default: "ADM-31"
 constexpr int MaxTermIndex       = 7;   // Max: "Legacy ANSI"
 
@@ -237,13 +235,6 @@ void setupRealCPUSpeed()
 }
 
 
-// 0 = 8080, 1 = Z80
-int getCPU()
-{
-  return preferences.getInt("CPU", DefaultCPU);
-}
-
-
 bool getEmuCRT()
 {
   return preferences.getBool("emuCRT", false);
@@ -281,7 +272,6 @@ void emulator_menu()
     Terminal.write( "\e[93m S \e[37m Send Disk to Serial\e[K\n\r");
     Terminal.write( "\e[93m R \e[37m Get Disk from Serial\e[K\n\r");
     Terminal.write( "\e[93m F \e[37m Format FileSystem\e[K\n\r");
-    Terminal.printf("\e[93m U \e[37m CPU: \e[33m%s\e[K\n\r", getCPU() == 1 ? "Z80" : "i8080");
     Terminal.printf("\e[93m P \e[37m Real CPU Speed: \e[33m%s\e[K\n\r", getRealCPUSpeed() ? "YES" : "NO");
     Terminal.write("\e[6A");  // cursor UP
     Terminal.printf("\t\t\t\t\t\e[93m T \e[37m Terminal: \e[33m%s\e[K\n\r", SupportedTerminals::names()[(int)getTerminalEmu()] );
@@ -343,12 +333,6 @@ void emulator_menu()
       // Emulate CRT
       case 'G':
         preferences.putBool("emuCRT", !getEmuCRT());
-        resetRequired = true;
-        break;
-
-      // CPU
-      case 'U':
-        preferences.putInt("CPU", getCPU() ^ 1);
         resetRequired = true;
         break;
 
@@ -545,7 +529,6 @@ void loop()
   Terminal.printf("\e[33mFile System :\e[32m %lld KiB used, %lld KiB free\e[K\r\n", used / 1024, (total - used) / 1024);
 
   Terminal.printf("\e[33mKbd Layout  : \e[32m%s\e[K\r\n", SupportedLayouts::names()[getKbdLayoutIndex()] );
-  Terminal.printf("\e[33mCPU         : \e[32m%s\e[92m\e[K\r\n\e[K\n", getCPU() == 1 ? "Z80" : "i8080");
 
   Terminal.printf("Press \e[93m[F12]\e[92m or \e[93m[PAUSE]\e[92m to display emulator menu\e[K\r\n");
 
@@ -565,6 +548,5 @@ void loop()
   // CPU speed
   setupRealCPUSpeed();
 
-  CPU cpu = (getCPU() == 1 ? CPU::Z80 : CPU::i8080);
-  altair.run(cpu, Altair88DiskBootROMRun);
+  altair.run(Altair88DiskBootROMRun);
 }

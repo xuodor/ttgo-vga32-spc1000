@@ -176,7 +176,6 @@ Machine::Machine()
     m_menuCallback(nullptr)
 {
   m_Z80.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO, writeIO);
-  m_i8080.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO, writeIO);
 }
 
 
@@ -206,21 +205,15 @@ void Machine::attachRAM(int RAMSize)
 }
 
 
-int Machine::nextStep(CPU cpu)
+int Machine::nextStep()
 {
-  return (cpu == CPU::i8080 ? m_i8080.step() : m_Z80.step());
+  return m_Z80.step();
 }
 
 
-void Machine::run(CPU cpu, int address)
+void Machine::run(int address)
 {
-  if (cpu == CPU::i8080) {
-    m_i8080.reset();
-    m_i8080.setPC(address);
-  } else {
-    m_Z80.reset();
-    m_Z80.setPC(address);
-  }
+  m_Z80.reset();
 
   constexpr int timeToCheckKeyboardReset = 200000;
   int timeToCheckKeyboard = timeToCheckKeyboardReset;
@@ -229,14 +222,14 @@ void Machine::run(CPU cpu, int address)
     int cycles = 0;
     if (m_realSpeed) {
       int64_t t = esp_timer_get_time();  // time in microseconds
-      cycles = nextStep(cpu);
+      cycles = nextStep();
       if (m_realSpeed) {
         t += cycles / 2;                 // at 2MHz each cycle last 0.5us, so instruction time is cycles*0.5, that is cycles/2
         while (esp_timer_get_time() < t)
           ;
       }
     } else {
-      cycles = nextStep(cpu);
+      cycles = nextStep();
     }
     for (Device * d = m_devices; d; d = d->next)
       d->tick(cycles);
@@ -766,4 +759,3 @@ void Mits88Disk::receiveDiskImageFromStream(int drive, Stream * stream)
 
 // Mits88Disk disk drive controller
 ////////////////////////////////////////////////////////////////////////////////////
-

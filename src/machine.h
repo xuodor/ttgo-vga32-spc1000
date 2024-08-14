@@ -33,7 +33,6 @@
 #include "fabutils.h"
 
 #include "emudevs/Z80.h"
-#include "emudevs/i8080.h"
 
 
 // Altair 88-DSK Boot ROM (starts at 0xFF00)
@@ -190,12 +189,6 @@ private:
 // Machine
 
 
-enum class CPU {
-  i8080,
-  Z80
-};
-
-
 typedef void (*MenuCallback)();
 
 
@@ -215,7 +208,7 @@ public:
 
   void setMenuCallback(MenuCallback value) { m_menuCallback = value; }
 
-  void run(CPU cpu, int address);
+  void run(int address);
 
   static int readByte(void * context, int address);
   static void writeByte(void * context, int address, int value);
@@ -231,13 +224,11 @@ public:
 
 private:
 
-  int nextStep(CPU cpu);
+  int nextStep();
 
   Device *     m_devices;
   bool         m_realSpeed;
   uint8_t *    m_RAM;
   MenuCallback m_menuCallback;
   fabgl::Z80   m_Z80;
-  fabgl::i8080 m_i8080;
 };
-
