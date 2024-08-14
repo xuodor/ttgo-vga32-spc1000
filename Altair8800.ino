@@ -58,89 +58,6 @@
 #define USE_TEXTUAL_DISPLAYCONTROLLER
 
 
-//////////////////////////////////////////////////////////////////////////////////
-// 8'' disk images (338K)
-// To use these disks you have to enable Disk_338K and disable MiniDisk_76K
-
-// CP/M 2.2
-#include "disks/CPM22/cpm22_dsk.h"          // usage: "#define DRIVE_A cpm22_dsk"
-#include "disks/CPM22/games_dsk.h"          // usage: "#define DRIVE_B games_dsk"
-#include "disks/CPM22/turbopascal3_dsk.h"   // usage: "#define DRIVE_B turbopascal3_dsk"
-#include "disks/CPM22/wordstar3_dsk.h"      // usage: "#define DRIVE_B wordstar3_dsk"
-#include "disks/CPM22/wordstar4_dsk.h"      // usage: "#define DRIVE_B wordstar4_dsk"
-#include "disks/CPM22/multiplan_dsk.h"      // usage: "#define DRIVE_B multiplan_dsk"
-#include "disks/CPM22/dbaseii_dsk.h"        // usage: "#define DRIVE_B dbaseii_dsk"
-#include "disks/CPM22/BDSC_dsk.h"           // usage: "#define DRIVE_B BDSC_dsk"
-#include "disks/CPM22/langs_dsk.h"          // usage: "#define DRIVE_B langs_dsk"
-
-// CP/M 1.4
-#include "disks/CPM14/cpm141_dsk.h"         // usage: "#define DRIVE_A cpm141_dsk"
-
-// CP/M 3
-#include "disks/CPM3/cpm3_disk1_dsk.h"      // usage: "#define DRIVE_A cpm3_disk1_dsk"
-#include "disks/CPM3/cpm3_disk2_dsk.h"      // usage: "#define DRIVE_B cpm3_disk2_dsk"
-#include "disks/CPM3/cpm3_build_dsk.h"      // usage: "#define DRIVE_B cpm3_build_dsk"
-
-// Altair DOS
-//   MEMORY SIZE? [insert "64"]
-//   INTERRUPTS? [press ENTER]
-//   HIGHEST DISK NUMBER? [insert "1"]
-//   HOW MANY DISK FILES? [insert "4"]
-//   HOW MANY RANDOM FILES? [insert "4"]
-#include "disks/AltairDOS/DOS_1_dsk.h"      // usage: "#define DRIVE_A DOS_1_dsk"
-#include "disks/AltairDOS/DOS_2_dsk.h"      // usage: "#define DRIVE_A DOS_2_dsk"
-
-// Basic
-//    MEMORY SIZE? [press ENTER]
-//    LINEPRINTER? [insert "C"]
-//    HIGHEST DISK NUMBER? [press ENTER]
-//    HOW MANY FILES? [press ENTER]
-//    HOW MANY RANDOM FILES? [press ENTER]
-#include "disks/basic/basic5_dsk.h"         // usage: "#define DRIVE_A basic5_dsk"
-
-//////////////////////////////////////////////////////////////////////////////////
-
-
-
-//////////////////////////////////////////////////////////////////////////////////
-// Mini disk images (76K)
-// To use these disks you have to enable MiniDisk_76K and disable Disk_338K
-
-// CP/M 2.2
-#include "minidisks/CPM22/cpm22_disk1_minidsk.h"  // usage: "#define DRIVE_A cpm22_disk1_minidsk"
-#include "minidisks/CPM22/cpm22_disk2_minidsk.h"  // usage: "#define DRIVE_B cpm22_disk2_minidsk"
-
-// Basic (need i8080 CPU)
-//   MEMORY SIZE? [press ENTER]
-//   LINEPRINTER? [insert "C"]
-//   HIGHEST DISK NUMBER? [insert "0"]
-//   HOW MANY FILES? [insert "3"]
-//   HOW MANY RANDOM FILES? [insert "2"]
-#include "minidisks/basic/basic300_5F_minidisk.h" // usage: "#define DRIVE_A basic300_5F_minidisk"
-
-//////////////////////////////////////////////////////////////////////////////////
-
-
-
-//////////////////////////////////////////////////////////////////////////////////
-// Disks configuration
-
-// Enable this when using 8'' disk images ("disks" folder)
-#define DISKFORMAT Disk_338K
-
-// Enable this when using minidisk images ("minidisk" folder)
-//#define DISKFORMAT MiniDisk_76K
-
-// Specify which disk image or file name assign to drives
-#define DRIVE_A cpm22_dsk     // A: read only (or read/write using SD Card)
-#define DRIVE_B games_dsk     // B: read only (or read/write using SD Card)
-#define DRIVE_C "diskC.dsk"   // C: read/write (remember to FORMAT!!)
-#define DRIVE_D "diskD.dsk"   // D: read/write (remember to FORMAT!!)
-
-//////////////////////////////////////////////////////////////////////////////////
-
-
-
 // consts
 
 constexpr int DefaultTermIndex   = 2;   // Default: "ADM-31"
@@ -168,7 +85,6 @@ fabgl::PS2Controller     PS2Controller;
 fabgl::Terminal          Terminal;
 
 Machine              altair;
-Mits88Disk           diskDrive(&altair, DISKFORMAT);
 SIO                  SIO0(&altair, 0x00);
 SIO                  SIO1(&altair, 0x10);
 SIO                  SIO2(&altair, 0x12);
@@ -263,7 +179,6 @@ void emulator_menu()
 
   for (bool loop = true; loop; ) {
 
-    diskDrive.flush();
 
     Terminal.setTerminalType(TermType::ANSILegacy);
 
@@ -288,24 +203,6 @@ void emulator_menu()
     Terminal.write(ch);
     Terminal.write("\n\r");
     switch (ch) {
-
-      // 1. Send a disk image to Serial Port
-      // 2. Receive a disk image from Serial Port
-      case 'S':
-      case 'R':
-      {
-        Terminal.write("Select a drive (A, B, C, D...): ");
-        char drive = toupper(Terminal.read());
-        if (ch == 'S') {
-          Terminal.printf("\n\rSending drive %c...\n\r", drive);
-          diskDrive.sendDiskImageToStream(drive - 'A', &Serial);
-        } else if (ch == 'R') {
-          Terminal.printf("\n\rReceiving drive %c...\n\r", drive);
-          diskDrive.receiveDiskImageFromStream(drive - 'A', &Serial);
-        }
-        break;
-      }
-
       // Format FileSystem
       case 'F':
         Terminal.write("\e[91mFormat deletes all disks and files in your SD or SPIFFS!\e[92m\r\nAre you sure? (Y/N)");
@@ -396,7 +293,6 @@ void emulator_menu()
   if (resetRequired) {
     Terminal.write("Reset required. Reset now? (Y/N)");
     if (toupper(Terminal.read()) == 'Y') {
-      diskDrive.detachAll();
       ESP.restart();
     }
   }
@@ -442,41 +338,6 @@ void setup()
 }
 
 
-void attachDisk(int drive, void const * data)
-{
-  auto filename = (char const *)data;
-  auto dskimage = (uint8_t const *) data;
-
-  FileBrowser fb(basepath);
-
-  if (dskimage[0] >= 0x80) {
-    // "data" is a disk image
-    if (FileBrowser::getDriveType(basepath) == fabgl::DriveType::SDCard) {
-      // when storage is SD Card, copy read only disk image into a file, if doesn't already exist
-      char newfilename[10] = { 'd', 'i', 's', 'k', (char)('A' + drive), '.', 'd', 's', 'k' };
-      Terminal.printf("\r\nAttaching disk %c to %s...", 'A' + drive, newfilename);
-      auto sz = fb.getFullPath(newfilename, nullptr, 0);
-      char newfilenamePath[sz];
-      fb.getFullPath(newfilename, newfilenamePath, sz);
-      diskDrive.attachFileFromImage(drive, newfilenamePath, dskimage);
-    } else {
-      // when storage is SPIFFS just mount image as Read Only image
-      diskDrive.attachReadOnlyBuffer(drive, dskimage);
-    }
-  } else {
-    if ((uint8_t)filename[0] < 0x80) {
-      // "data" is a filename
-      Terminal.printf("\r\nAttaching disk %c to %s...", 'A' + drive, filename);
-      Terminal.flush();
-      auto sz = fb.getFullPath(filename, nullptr, 0);
-      char filenamePath[sz];
-      fb.getFullPath(filename, filenamePath, sz);
-      diskDrive.attachFile(drive, filenamePath);
-    }
-  }
-}
-
-
 void loop()
 {
   if (FileBrowser::mountSDCard(FORMAT_ON_FAIL, SDCARD_MOUNT_PATH))
@@ -485,11 +346,6 @@ void loop()
     basepath = SPIFFS_MOUNT_PATH;
 
   // setup disk drives
-
-  attachDisk(0, DRIVE_A);
-  attachDisk(1, DRIVE_B);
-  attachDisk(2, DRIVE_C);
-  attachDisk(3, DRIVE_D);
 
   // setup SIOs (Serial I/O)
 
