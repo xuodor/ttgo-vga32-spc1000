@@ -35,10 +35,9 @@
 #include "emudevs/Z80.h"
 
 
-// Altair 88-DSK Boot ROM (starts at 0xFF00)
-extern const uint8_t Altair88DiskBootROM[256];
-const int Altair88DiskBootROMAddr = 0xFF00;
-const int Altair88DiskBootROMRun  = 0xFF00;
+extern const uint8_t Altair88DiskBootROM[8];
+const int Altair88DiskBootROMAddr = 0x0000;
+const int Altair88DiskBootROMRun  = 0x0000;
 
 
 class Machine;

@@ -1,42 +1,3 @@
-/*
-  Created by Fabrizio Di Vittorio (fdivitto2013@gmail.com) - <http://www.fabgl.com>
-  Copyright (c) 2019-2022 Fabrizio Di Vittorio.
-  All rights reserved.
-
-
-* Please contact fdivitto2013@gmail.com if you need a commercial license.
-
-
-* This library and related software is available under GPL v3.
-
-  FabGL is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  FabGL is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with FabGL.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-
-
- /*
-  * Optional SD Card connections:
-  *   MISO => GPIO 16  (2 for PICO-D4)
-  *   MOSI => GPIO 17  (12 for PICO-D4)
-  *   CLK  => GPIO 14
-  *   CS   => GPIO 13
-  *
-  * To change above assignment fill other paramaters of FileBrowser::mountSDCard().
-  */
-
-
-
 #include <string>
 
 #include <Preferences.h>
@@ -74,13 +35,6 @@ constexpr int DefaultColorsIndex = 0;   // Default: Green/Black
 constexpr int MaxColorsIndex     = 5;
 
 
-// globals
-
-#ifdef USE_TEXTUAL_DISPLAYCONTROLLER
-fabgl::VGATextController DisplayController;
-#else
-fabgl::VGA16Controller   DisplayController;
-#endif
 fabgl::PS2Controller     PS2Controller;
 fabgl::Terminal          Terminal;
 
@@ -94,6 +48,78 @@ char const * basepath = nullptr;
 
 using std::string;
 
+
+fabgl::VGADirectController DisplayController;
+
+
+volatile double      objX                 = 300;
+volatile double      objY                 = 200;
+static double        objDir               = 0.3;
+static double        objVel               =  10;
+static constexpr int objSize              =  25;
+static uint32_t      bgParkMillerState    = 1;
+static constexpr int borderSize           = 48;
+static constexpr int hborder = 64;
+constexpr int        scanlinesPerCallback = 2;  // screen height should be divisible by this value
+
+static TaskHandle_t  mainTaskHandle;
+
+
+// just to avoid floating point calculations inside MyDirectDrawVGAController::drawScanline()
+volatile int objIntX;
+volatile int objIntY;
+
+
+inline int fastRandom()
+{
+  bgParkMillerState = (uint64_t)bgParkMillerState * 48271 % 0x7fffffff;
+  return bgParkMillerState % 4;
+}
+
+
+void IRAM_ATTR drawScanline(void * arg, uint8_t * dest, int scanLine)
+{
+  auto fgcolor = DisplayController.createRawPixel(RGB222(3, 0, 0)); // red
+  auto bgcolor = DisplayController.createRawPixel(RGB222(0, 0, 2)); // blue
+  auto borderColor = DisplayController.createRawPixel(RGB222(0, 0, 0)); // black
+
+  auto width  = DisplayController.getScreenWidth();
+  auto height = DisplayController.getScreenHeight();
+
+  // draws "scanlinesPerCallback" scanlines every time drawScanline() is called
+  for (int i = 0; i < scanlinesPerCallback; ++i) {
+
+    // fill upper and lower border with random background color
+    if (scanLine < borderSize || scanLine > height - borderSize)
+      bgcolor = borderColor;
+
+    // fill line with background color
+    memset(dest, bgcolor, width);
+
+    for (int col = 0; col < hborder; ++col) {
+        VGA_PIXELINROW(dest, col) = borderColor;
+        VGA_PIXELINROW(dest, width-col-1) = borderColor;
+    }
+    // fill object with foreground color
+    if (scanLine >= objIntY - objSize / 2 && scanLine <= objIntY + objSize / 2) {
+      for (int col = objIntX - objSize / 2; col < objIntX + objSize / 2; ++col) {
+        if (col >= 0 && col < width) {
+          VGA_PIXELINROW(dest, col) = fgcolor;
+        }
+      }
+    }
+
+    // go to next scanline
+    ++scanLine;
+    dest += width;
+
+  }
+
+  if (scanLine == height) {
+    // signal end of screen
+    vTaskNotifyGiveFromISR(mainTaskHandle, NULL);
+  }
+}
 
 TermType getTerminalEmu()
 {
@@ -168,145 +194,6 @@ void setupTerminalColors()
 }
 
 
-// shown pressing PAUSE
-void emulator_menu()
-{
-  bool resetRequired = false;
-  bool changedRowsCount = false;
-
-  for (bool loop = true; loop; ) {
-
-
-    Terminal.setTerminalType(TermType::ANSILegacy);
-
-    Terminal.write("\r\n\n\e[97m\e[40m                            ** Emulator Menu **\e[K\r\n\e[K\n");
-    Terminal.write( "\e[93m Z \e[37m Reset\e[K\n\r");
-    Terminal.write( "\e[93m S \e[37m Send Disk to Serial\e[K\n\r");
-    Terminal.write( "\e[93m R \e[37m Get Disk from Serial\e[K\n\r");
-    Terminal.write( "\e[93m F \e[37m Format FileSystem\e[K\n\r");
-    Terminal.printf("\e[93m P \e[37m Real CPU Speed: \e[33m%s\e[K\n\r", getRealCPUSpeed() ? "YES" : "NO");
-    Terminal.write("\e[6A");  // cursor UP
-    Terminal.printf("\t\t\t\t\t\e[93m T \e[37m Terminal: \e[33m%s\e[K\n\r", SupportedTerminals::names()[(int)getTerminalEmu()] );
-    Terminal.printf("\t\t\t\t\t\e[93m K \e[37m Keyboard Layout: \e[33m%s\e[K\n\r", SupportedLayouts::names()[getKbdLayoutIndex()] );
-    #ifndef USE_TEXTUAL_DISPLAYCONTROLLER
-    Terminal.printf("\t\t\t\t\t\e[93m G \e[37m CRT Mode: \e[33m%s\e[K\n\r", getEmuCRT() ? "YES" : "NO");
-    #endif
-    Terminal.printf("\t\t\t\t\t\e[93m C \e[37m Colors: \e[33m%s\e[K\n\r", ColorsStr[getColorsIndex()] );
-    Terminal.printf("\t\t\t\t\t\e[93m L \e[37m Rows: \e[33m%d\e[K\n\r",  getRowsCount() <= 0 ? Terminal.getRows() : getRowsCount());
-    Terminal.write( "\t\t\t\t\t\e[93m O \e[37m Reset Configuration\e[K\n\r");
-
-    Terminal.write("\n\n\e[97mPlease select an option (ENTER to exit): \e[K\e[92m");
-    int ch = toupper(Terminal.read());
-    Terminal.write(ch);
-    Terminal.write("\n\r");
-    switch (ch) {
-      // Format FileSystem
-      case 'F':
-        Terminal.write("\e[91mFormat deletes all disks and files in your SD or SPIFFS!\e[92m\r\nAre you sure? (Y/N)");
-        if (toupper(Terminal.read()) == 'Y') {
-          Terminal.write("\n\rFormatting...");
-          Terminal.flush();
-          FileBrowser::format(FileBrowser::getDriveType(basepath), 0);
-          resetRequired = true;
-        }
-        break;
-
-      // Reset
-      case 'Z':
-        Terminal.write("Resetting the Altair. Are you sure? (Y/N)");
-        if (toupper(Terminal.read()) == 'Y')
-          ESP.restart();
-        break;
-
-      // Real CPU speed
-      case 'P':
-        preferences.putBool("realSpeed", !getRealCPUSpeed());
-        setupRealCPUSpeed();
-        break;
-
-      // Emulate CRT
-      case 'G':
-        preferences.putBool("emuCRT", !getEmuCRT());
-        resetRequired = true;
-        break;
-
-      // Terminal emulation
-      case 'T':
-      {
-        int termIndex = (int)getTerminalEmu() + 1;
-        if (termIndex > MaxTermIndex)
-          termIndex = 0;
-        preferences.putInt("termEmu", termIndex);
-        break;
-      }
-
-      // Keyboard layout
-      case 'K':
-      {
-        int kbdLayIndex = getKbdLayoutIndex() + 1;
-        if (kbdLayIndex >= SupportedLayouts::count())
-          kbdLayIndex = 0;
-        preferences.putInt("kbdLay", kbdLayIndex);
-        setupKbdLayout();
-        break;
-      }
-
-      // Colors
-      case 'C':
-      {
-        int colorsIndex = getColorsIndex() + 1;
-        if (colorsIndex > MaxColorsIndex)
-          colorsIndex = 0;
-        preferences.putInt("colors", colorsIndex);
-        break;
-      }
-
-      // Rows
-      case 'L':
-      {
-        int rows = getRowsCount() + 1;
-        if (rows < 24)
-          rows = 24;  // min
-        if (rows > 25)
-          rows = 0;   // max
-        preferences.putInt("rowsCount", rows);
-        changedRowsCount = true;
-        break;
-      }
-
-      // Reset configuration
-      case 'O':
-        preferences.clear();
-        resetRequired = true;
-        break;
-
-      default:
-        loop = false;
-        break;
-
-    }
-  }
-
-  if (resetRequired) {
-    Terminal.write("Reset required. Reset now? (Y/N)");
-    if (toupper(Terminal.read()) == 'Y') {
-      ESP.restart();
-    }
-  }
-
-  Terminal.localWrite("\n");
-
-  if (changedRowsCount) {
-    setupRowsCount();
-    Terminal.clear();
-    Terminal.write("Clear screen required. Settings applied.\r\n\e\n");
-  }
-
-  setupTerminalColors();
-  setupTerminalEmu();
-}
-
-
 void setup()
 {
   preferences.begin("altair8800", false);
@@ -316,76 +203,44 @@ void setup()
   // setup Keyboard (default configuration)
   PS2Controller.begin(PS2Preset::KeyboardPort0);
 
-  // setup VGA (default configuration with 64 colors)
+  mainTaskHandle = xTaskGetCurrentTaskHandle();
+
   DisplayController.begin();
+  DisplayController.setScanlinesPerCallBack(scanlinesPerCallback);
+  DisplayController.setDrawScanlineCallback(drawScanline);
+  DisplayController.setResolution(VGA_640x480_60Hz);
 
-  if (getEmuCRT())
-    DisplayController.setResolution(VGA_640x200_70HzRetro);
-  else
-    DisplayController.setResolution(VGA_640x200_70Hz);
-
-  Terminal.begin(&DisplayController);
-  Terminal.connectLocally();      // to use Terminal.read(), available(), etc..
-
-  Terminal.setBackgroundColor(Color::Black);
-  Terminal.setForegroundColor(Color::BrightGreen);
-  Terminal.clear();
-
-  Terminal.enableCursor(true);
 }
 
 
 void loop()
 {
-  if (FileBrowser::mountSDCard(FORMAT_ON_FAIL, SDCARD_MOUNT_PATH))
-    basepath = SDCARD_MOUNT_PATH;
-  else if (FileBrowser::mountSPIFFS(FORMAT_ON_FAIL, SPIFFS_MOUNT_PATH))
-    basepath = SPIFFS_MOUNT_PATH;
-
-  // setup disk drives
-
   // RAM
   altair.attachRAM(65536);
 
   // boot ROM
-  altair.load(Altair88DiskBootROMAddr, Altair88DiskBootROM, sizeof(Altair88DiskBootROM));
-
-  setupTerminalColors();
-  Terminal.clear();
-
-  setupRowsCount();
-
-  Terminal.write("\e[97m\e[44m");
-  Terminal.write("                    /* * * * * * * * * * * * * * * * * * * *\e[K\r\n");
-  Terminal.write("                             A L T A I R     8 8 0 0 \e[K\r\n");
-  Terminal.write("                     \e[37mby Fabrizio Di Vittorio - www.fabgl.com\e[97m\e[K\r\n");
-  Terminal.write("                     * * * * * * * * * * * * * * * * * * * */\e[K\r\n\e[K\n");
-
-  Terminal.printf("\e[33mFree Memory :\e[32m %d bytes\e[K\r\n", heap_caps_get_free_size(MALLOC_CAP_32BIT));
-
-  int64_t total, used;
-  FileBrowser::getFSInfo(FileBrowser::getDriveType(basepath), 0, &total, &used);
-  Terminal.printf("\e[33mFile System :\e[32m %lld KiB used, %lld KiB free\e[K\r\n", used / 1024, (total - used) / 1024);
-
-  Terminal.printf("\e[33mKbd Layout  : \e[32m%s\e[K\r\n", SupportedLayouts::names()[getKbdLayoutIndex()] );
-
-  Terminal.printf("Press \e[93m[F12]\e[92m or \e[93m[PAUSE]\e[92m to display emulator menu\e[K\r\n");
-
-  setupTerminalColors();
-
-  Terminal.setColorForAttribute(CharStyle::Bold, Color::BrightYellow, false);
-  Terminal.setColorForAttribute(CharStyle::Italic, Color::BrightRed, false);
-  Terminal.setColorForAttribute(CharStyle::Underline, Color::BrightWhite, false);
-  Terminal.setColorForAttribute(CharStyle::ReducedLuminosity, Color::BrightYellow, false);
+  altair.load(0, Altair88DiskBootROM, sizeof(Altair88DiskBootROM));
 
   // setup keyboard layout
   setupKbdLayout();
 
-  // setup terminal emulation
-  setupTerminalEmu();
-
   // CPU speed
   setupRealCPUSpeed();
 
-  altair.run(Altair88DiskBootROMRun);
+  // test collision with borders and bounce changing direction
+  if (objX < objSize / 2 || objX > DisplayController.getScreenWidth() - objSize / 2)
+    objDir = PI - objDir;
+  else if (objY < borderSize + objSize / 2 || objY > DisplayController.getScreenHeight() - borderSize - objSize / 2)
+    objDir = 2 * PI - objDir;
+
+  // calculate new coordinates
+  objX += objVel * cos(objDir);
+  objY += objVel * sin(objDir);
+
+  // convert object coordinate to integer
+  objIntX = objX;
+  objIntY = objY;
+
+
+  altair.run(0x0000);
 }
