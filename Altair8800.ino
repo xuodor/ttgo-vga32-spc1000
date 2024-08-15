@@ -55,7 +55,7 @@
 
 
 // Display controller (textual or bitmapped)
-#define USE_TEXTUAL_DISPLAYCONTROLLER
+//#define USE_TEXTUAL_DISPLAYCONTROLLER
 
 
 // consts
@@ -85,9 +85,6 @@ fabgl::PS2Controller     PS2Controller;
 fabgl::Terminal          Terminal;
 
 Machine              altair;
-SIO                  SIO0(&altair, 0x00);
-SIO                  SIO1(&altair, 0x10);
-SIO                  SIO2(&altair, 0x12);
 Preferences          preferences;
 
 
@@ -347,25 +344,11 @@ void loop()
 
   // setup disk drives
 
-  // setup SIOs (Serial I/O)
-
-  // TTY
-  SIO0.attachStream(&Terminal);
-
-  // CRT/Keyboard
-  SIO1.attachStream(&Terminal);
-
-  // Serial
-  SIO2.attachStream(&Serial);
-
   // RAM
   altair.attachRAM(65536);
 
   // boot ROM
   altair.load(Altair88DiskBootROMAddr, Altair88DiskBootROM, sizeof(Altair88DiskBootROM));
-
-  // menu callback (pressing PAUSE or F12)
-  altair.setMenuCallback(emulator_menu);
 
   setupTerminalColors();
   Terminal.clear();

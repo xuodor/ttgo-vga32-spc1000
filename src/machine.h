@@ -67,33 +67,6 @@ private:
 
 
 ////////////////////////////////////////////////////////////////////////////////////
-// SIO
-
-
-class SIO : public Device {
-
-public:
-
-  SIO(Machine * machine, int address);
-
-  void attachStream(Stream * value);
-
-  void tick(int ticks) { }
-
-private:
-
-  bool read(int address, int * result);
-  bool write(int address, int value);
-
-  int                 m_address;
-  Stream *            m_stream;
-
-};
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////////
 // Machine
 
 
@@ -113,8 +86,6 @@ public:
   void attachDevice(Device * device);
 
   void attachRAM(int RAMSize);
-
-  void setMenuCallback(MenuCallback value) { m_menuCallback = value; }
 
   void run(int address);
 
@@ -137,6 +108,5 @@ private:
   Device *     m_devices;
   bool         m_realSpeed;
   uint8_t *    m_RAM;
-  MenuCallback m_menuCallback;
   fabgl::Z80   m_Z80;
 };

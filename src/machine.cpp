@@ -74,8 +74,7 @@ const uint8_t Altair88DiskBootROM[256] = {
 
 Machine::Machine()
   : m_devices(nullptr),
-    m_realSpeed(false),
-    m_menuCallback(nullptr)
+    m_realSpeed(false)
 {
   m_Z80.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO, writeIO);
 }
@@ -135,15 +134,6 @@ void Machine::run(int address)
     }
     for (Device * d = m_devices; d; d = d->next)
       d->tick(cycles);
-
-    // time to check keyboard for menu key (F12 or PAUSE)?
-    timeToCheckKeyboard -= cycles;
-    if (timeToCheckKeyboard < 0) {
-      timeToCheckKeyboard = timeToCheckKeyboardReset;
-      auto keyboard = fabgl::PS2Controller::keyboard();
-      if (m_menuCallback && (keyboard->isVKDown(VirtualKey::VK_PAUSE) || keyboard->isVKDown(VirtualKey::VK_F12)))
-        m_menuCallback();
-    }
   }
 
 }
@@ -189,67 +179,3 @@ void Machine::writeIO(void * context, int address, int value)
 
   //Serial.printf("writeIO 0x%x %d %c\n\r", address, value, (char)value);
 }
-
-
-// Machine
-////////////////////////////////////////////////////////////////////////////////////
-
-
-
-////////////////////////////////////////////////////////////////////////////////////
-// SIO
-
-
-SIO::SIO(Machine * machine, int address)
-  : Device(machine),
-    m_address(address),
-    m_stream(nullptr)
-{
-  machine->attachDevice(this);
-}
-
-
-void SIO::attachStream(Stream * value)
-{
-  m_stream = value;
-}
-
-
-bool SIO::read(int address, int * result)
-{
-  if (address == m_address) {
-    // CTRL
-    bool available = false;
-    if (m_stream)
-      available = m_stream->available();
-    *result = 0b10 | (available ? 1 : 0);
-    return true;
-  } else if (address == m_address + 1) {
-    // DATA
-    int ch = 0;
-    if (m_stream && m_stream->available())
-      ch = m_stream->read();
-    *result = ch;
-    return true;
-  }
-  return false;
-}
-
-
-bool SIO::write(int address, int value)
-{
-  if (address == m_address) {
-    // CTRL
-    return true;
-  } else if (address == m_address + 1) {
-    // DATA
-    if (m_stream)
-      m_stream->write(value);
-    //fprintf(stderr, "SIO: %c\n", value);
-    return true;
-  }
-  return false;
-}
-
-// SIO
-////////////////////////////////////////////////////////////////////////////////////
