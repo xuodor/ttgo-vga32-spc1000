@@ -42,7 +42,19 @@
 
 
 
-const uint8_t spcrom[8] = { 0x01, 0x02, 0xa0, 0x3e, 0x55, 0xed, 0x79, 0x76 };
+const uint8_t spcrom[0x40] = {
+  0x01, 0x02, 0x00, 0x3e, 0x55, 0xed, 0x79, 0x00,
+  0x01, 0x02, 0x10, 0x3e, 0x55, 0xed, 0x79, 0x00,
+
+  0x01, 0x03, 0x20, 0x3e, 0x55, 0xed, 0x79, 0x00,
+  0x01, 0x02, 0x30, 0x3e, 0x55, 0xed, 0x79, 0x00,
+
+  0x01, 0x02, 0x40, 0x3e, 0x55, 0xed, 0x79, 0x00,
+  0x01, 0x02, 0x80, 0x3e, 0x55, 0xed, 0x79, 0x00,
+
+  0xc3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0xfb, 0xed, 0x4d, 0x00, 0x00, 0x00, 0x00, 0x00
+};
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +71,7 @@ Machine::Machine()
 
 Machine::~Machine()
 {
-  delete [] m_RAM;
+
 }
 
 
@@ -70,12 +82,37 @@ void Machine::attachDevice(Device * device)
 }
 
 
+void Machine::init() {
+  memset(m_RAM, 0, 65536);
+  load(0, spcrom, 0x40);
+
+  mc6847.begin();
+  mc6847.setResolution(VGA_640x480_60Hz);
+
+  mc6847.setPaletteItem(0, RGB888(0, 0, 0));
+  mc6847.setPaletteItem(1, RGB888(255, 0, 0));
+  mc6847.setPaletteItem(2, RGB888(0, 255, 0));
+  mc6847.setPaletteItem(3, RGB888(0, 0, 255));
+  mc6847.setPaletteItem(4, RGB888(255, 255, 0));
+  mc6847.setPaletteItem(5, RGB888(255, 0, 255));
+  mc6847.setPaletteItem(6, RGB888(0, 255, 255));
+  mc6847.setPaletteItem(7, RGB888(255, 255, 255));
+
+  for (int y = 0; y < 480; ++y) {
+    for (int x = 0; x < 640; ++x) {
+      if (!(48 <= y && y < 480-64 && 64 <= x && x < 640-64)) {
+        mc6847.directSetPixel(x, y, 2);
+      }
+    }
+  }
+
+}
+
 void Machine::load(int address, uint8_t const * data, int length)
 {
   for (int i = 0; i < length; ++i)
     m_RAM[address + i] = data[i];
 }
-
 
 void Machine::attachRAM(int RAMSize)
 {
@@ -88,29 +125,44 @@ int Machine::nextStep()
   return m_Z80.step();
 }
 
+#define INTR_PERIOD 16.6666
 
 void Machine::run()
 {
+  const int refresh_set_ = 0;
+
   m_Z80.reset();
   m_Z80.setPC(0);
 
+  int64_t t = esp_timer_get_time();
+  float interrupt_timer = (float)t;
+  float instruction_timer = (float)t;
+  int refresh_timer = refresh_set_;
   while (true) {
     int cycles = 0;
-    if (m_realSpeed) {
-      int64_t t = esp_timer_get_time();  // time in microseconds
-      cycles = nextStep();
-      if (m_realSpeed) {
-        t += cycles / 2;                 // at 2MHz each cycle last 0.5us, so instruction time is cycles*0.5, that is cycles/2
-        while (esp_timer_get_time() < t)
-          ;
-      }
-    } else {
-      cycles = nextStep();
-    }
-    for (Device * d = m_devices; d; d = d->next)
-      d->tick(cycles);
-  }
+    int64_t t = esp_timer_get_time(); // ms
 
+    // Using the cycles consumed by the instruction code, give a delay before
+    // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
+    // instruction time == cycles*0.25 == cycles/4
+    cycles = nextStep();
+    instruction_timer += cycles / 4;
+    do {
+      delay(1);  // sleep 1ms
+      int64_t time_past = esp_timer_get_time() - t;
+      instruction_timer -= time_past;
+      interrupt_timer -= time_past;
+      if (interrupt_timer < 0.f) {
+        m_Z80.IRQ(/*not_used*/0);
+        interrupt_timer += INTR_PERIOD;
+        if (refresh_timer <= 0) {
+          // Refresh screen 60Hz by default, same rate as the interrupt.
+          refresh_timer = refresh_set_;
+        }
+        if (refresh_set_) refresh_timer--;
+      }
+    } while (instruction_timer > 0.f);
+  }
 }
 
 
@@ -126,31 +178,21 @@ void Machine::writeByte(void * context, int address, int value)
 }
 
 
-int Machine::readIO(void * context, int address)
+int Machine::readIO(void * context, int addr)
 {
-  Serial.printf("readIO 0x%x\n\r", address);
-  auto m = (Machine*)context;
-  for (Device * d = m->m_devices; d; d = d->next) {
-    int value;
-    if (d->read(address, &value))
-      return value;
-  }
-
-  // not handlded!
-
-
+  Serial.printf("readIO 0x%x\n\r", addr);
   return 0xff;
 }
 
 
-void Machine::writeIO(void * context, int address, int value)
-{
-  Serial.printf("writeIO 0x%x %d %c\n\r", address, value, (char)value);
-  auto m = (Machine*)context;
-  for (Device * d = m->m_devices; d; d = d->next)
-    if (d->write(address, value))
-      return;
+void Machine::writeIO(void * context, int addr, int value) {
+  Machine *m = (Machine *)context;
+  Serial.printf("writeIO 0x%x\n\r", addr, value);
+  if ((addr & 0xe000) == 0) {
+    m->WriteVram(addr, value);
+  }
+}
 
-  // not handlded!
-
+void Machine::WriteVram(int addr, int value) {
+  vram_[addr] = value;
 }

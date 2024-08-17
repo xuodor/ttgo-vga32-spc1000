@@ -30,12 +30,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "fabgl.h"
 #include "fabutils.h"
 
 #include "emudevs/Z80.h"
 
-
-extern const uint8_t spcrom[8];
+extern const uint8_t spcrom[0x40];
 
 
 class Machine;
@@ -78,6 +78,7 @@ public:
 
   ~Machine();
 
+  void init();
   void load(int address, uint8_t const * data, int length);
 
   void attachDevice(Device * device);
@@ -85,6 +86,7 @@ public:
   void attachRAM(int RAMSize);
 
   void run();
+  void WriteVram(int addr, int value);
 
   static int readByte(void * context, int address);
   static void writeByte(void * context, int address, int value);
@@ -104,6 +106,8 @@ private:
 
   Device *     m_devices;
   bool         m_realSpeed;
-  uint8_t m_RAM[65536];
+  uint8_t m_RAM[0x10000];
+  uint8_t vram_[0x2000];
   fabgl::Z80   m_Z80;
+  fabgl::VGA8Controller mc6847;
 };
