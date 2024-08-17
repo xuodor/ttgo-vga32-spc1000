@@ -35,9 +35,7 @@
 #include "emudevs/Z80.h"
 
 
-extern const uint8_t Altair88DiskBootROM[8];
-const int Altair88DiskBootROMAddr = 0x0000;
-const int Altair88DiskBootROMRun  = 0x0000;
+extern const uint8_t spcrom[8];
 
 
 class Machine;
@@ -86,7 +84,7 @@ public:
 
   void attachRAM(int RAMSize);
 
-  void run(int address);
+  void run();
 
   static int readByte(void * context, int address);
   static void writeByte(void * context, int address, int value);
@@ -106,6 +104,6 @@ private:
 
   Device *     m_devices;
   bool         m_realSpeed;
-  uint8_t *    m_RAM;
+  uint8_t m_RAM[65536];
   fabgl::Z80   m_Z80;
 };

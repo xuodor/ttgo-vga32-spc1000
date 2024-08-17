@@ -41,8 +41,8 @@
 
 
 
-// Altair 88-DSK Boot ROM (starts at 0xFF00)
-const uint8_t Altair88DiskBootROM[8] = { 0x01, 0x02, 0xa0, 0x3e, 0x55, 0xed, 0x79, 0x76 };
+
+const uint8_t spcrom[8] = { 0x01, 0x02, 0xa0, 0x3e, 0x55, 0xed, 0x79, 0x76 };
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +79,7 @@ void Machine::load(int address, uint8_t const * data, int length)
 
 void Machine::attachRAM(int RAMSize)
 {
-  m_RAM = new uint8_t[RAMSize];
+
 }
 
 
@@ -89,9 +89,10 @@ int Machine::nextStep()
 }
 
 
-void Machine::run(int address)
+void Machine::run()
 {
   m_Z80.reset();
+  m_Z80.setPC(0);
 
   while (true) {
     int cycles = 0;
