@@ -34,9 +34,7 @@
 #include "fabutils.h"
 
 #include "emudevs/Z80.h"
-
-extern const uint8_t spcrom[0x80];
-
+#include "mc6847.h"
 
 class Machine;
 
@@ -109,5 +107,5 @@ private:
   uint8_t m_RAM[0x10000];
   uint8_t vram_[0x2000];
   fabgl::Z80   m_Z80;
-  fabgl::VGA8Controller mc6847;
+  MC6847 mc6847;
 };

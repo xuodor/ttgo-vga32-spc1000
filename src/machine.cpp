@@ -35,13 +35,8 @@
 #include "fabgl.h"
 #include "fabutils.h"
 
-
-
-
-
-
-
-
+extern uint8_t rom[];
+/*
 const uint8_t spcrom[0x80] = {
   0xed, 0x56, 0xfb, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x2a, 0x70, 0x00, 0x23, 0x22, 0x70, 0x00, 0x00,
@@ -67,7 +62,7 @@ const uint8_t spcrom[0x80] = {
   0x00, 0x00, 0x00, 0x00, 0xe5, 0x2a, 0x36, 0x00,
   0x23, 0x22, 0x36, 0x00, 0xe1, 0xfb, 0xed, 0x4d
 };
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Machine
@@ -96,10 +91,11 @@ void Machine::attachDevice(Device * device)
 
 void Machine::init() {
   memset(m_RAM, 0, 65536);
-  load(0, spcrom, 0x80);
+  load(0, rom, 0x8000);
 
   mc6847.begin();
   mc6847.setResolution(VGA_640x480_60Hz);
+  mc6847.InitVRAM(vram_);
 
   mc6847.setPaletteItem(0, RGB888(0, 0, 0));
   mc6847.setPaletteItem(1, RGB888(255, 0, 0));
@@ -141,7 +137,7 @@ int Machine::nextStep()
 
 void Machine::run()
 {
-  const int refresh_set_ = 0;
+  const int refresh_set_ = 1;
 
   m_Z80.reset();
 
@@ -151,7 +147,7 @@ void Machine::run()
   int refresh_timer = refresh_set_;
 
   Serial.printf("start:%lld\n", esp_timer_get_time());
-  for (int i = 0; i < 100000; ++i) {
+  while (true) {
     // Using the cycles consumed by the instruction code, give a delay before
     // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
     // instruction time == cycles*0.25 == cycles/4
@@ -172,6 +168,7 @@ void Machine::run()
         interrupt_timer += INTR_PERIOD;
         if (refresh_timer <= 0) {
           // Refresh screen 60Hz by default, same rate as the interrupt.
+          mc6847.RefreshScreen();
           refresh_timer = refresh_set_;
         }
         if (refresh_set_) refresh_timer--;
@@ -181,7 +178,6 @@ void Machine::run()
   int count = readByte(this, 0x36);
   Serial.printf("IRQ-count: %d %d\n\r", count, readByte(this, 0x70));
   Serial.printf("end:%lld\n", esp_timer_get_time());
-
   while(true) {delay(1000);}
 }
 
@@ -207,8 +203,8 @@ int Machine::readIO(void * context, int addr)
 
 void Machine::writeIO(void * context, int addr, int value) {
   if ((addr & 0xe000) == 0) { // 0x0000~0x1fff
-//    Machine *m = (Machine *)context;
-//    m->WriteVram(addr, value);
+    Machine *m = (Machine *)context;
+    m->WriteVram(addr, value);
   }
 }
 
