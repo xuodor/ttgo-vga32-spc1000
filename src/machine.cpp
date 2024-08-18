@@ -42,18 +42,30 @@
 
 
 
-const uint8_t spcrom[0x40] = {
-  0x01, 0x02, 0x00, 0x3e, 0x55, 0xed, 0x79, 0x00,
-  0x01, 0x02, 0x10, 0x3e, 0x55, 0xed, 0x79, 0x00,
+const uint8_t spcrom[0x80] = {
+  0xed, 0x56, 0xfb, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x2a, 0x70, 0x00, 0x23, 0x22, 0x70, 0x00, 0x00,
 
-  0x01, 0x03, 0x20, 0x3e, 0x55, 0xed, 0x79, 0x00,
+  0x01, 0x03, 0x20, 0x3e, 0xaa, 0xed, 0x79, 0x00,
   0x01, 0x02, 0x30, 0x3e, 0x55, 0xed, 0x79, 0x00,
 
-  0x01, 0x02, 0x40, 0x3e, 0x55, 0xed, 0x79, 0x00,
+  0x01, 0x02, 0x40, 0x3e, 0xaa, 0xed, 0x79, 0x00,
   0x01, 0x02, 0x80, 0x3e, 0x55, 0xed, 0x79, 0x00,
 
-  0xc3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0xfb, 0xed, 0x4d, 0x00, 0x00, 0x00, 0x00, 0x00
+  0xc3, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0xc3, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+  0x00, 0x00, 0x00, 0x00, 0xe5, 0x2a, 0x36, 0x00,
+  0x23, 0x22, 0x36, 0x00, 0xe1, 0xfb, 0xed, 0x4d
 };
 
 
@@ -84,7 +96,7 @@ void Machine::attachDevice(Device * device)
 
 void Machine::init() {
   memset(m_RAM, 0, 65536);
-  load(0, spcrom, 0x40);
+  load(0, spcrom, 0x80);
 
   mc6847.begin();
   mc6847.setResolution(VGA_640x480_60Hz);
@@ -125,34 +137,37 @@ int Machine::nextStep()
   return m_Z80.step();
 }
 
-#define INTR_PERIOD 16.6666
+#define INTR_PERIOD 16666
 
 void Machine::run()
 {
   const int refresh_set_ = 0;
 
   m_Z80.reset();
-  m_Z80.setPC(0);
 
-  int64_t t = esp_timer_get_time();
-  float interrupt_timer = (float)t;
-  float instruction_timer = (float)t;
+  int64_t instruction_timer = 0;
+  int64_t interrupt_timer = INTR_PERIOD;
+  int64_t cur_ts;
   int refresh_timer = refresh_set_;
-  while (true) {
-    int cycles = 0;
-    int64_t t = esp_timer_get_time(); // ms
 
+  Serial.printf("start:%lld\n", esp_timer_get_time());
+  for (int i = 0; i < 100000; ++i) {
     // Using the cycles consumed by the instruction code, give a delay before
     // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
     // instruction time == cycles*0.25 == cycles/4
-    cycles = nextStep();
+    int64_t cur_ts = esp_timer_get_time(); // us
+    int cycles = nextStep();
     instruction_timer += cycles / 4;
+//    Serial.printf("cycles:%d pc:%x\n", cycles, m_Z80.getPC());
     do {
-      delay(1);  // sleep 1ms
-      int64_t time_past = esp_timer_get_time() - t;
+      int64_t ts = esp_timer_get_time();
+      int64_t time_past = ts - cur_ts;
+      cur_ts = ts;
+//      Serial.printf("diff: %lld code:%lld interrupt:%lld\n", time_past, instruction_timer, interrupt_timer);
       instruction_timer -= time_past;
       interrupt_timer -= time_past;
       if (interrupt_timer < 0.f) {
+//        Serial.printf("IRQ\n");
         m_Z80.IRQ(/*not_used*/0);
         interrupt_timer += INTR_PERIOD;
         if (refresh_timer <= 0) {
@@ -163,6 +178,11 @@ void Machine::run()
       }
     } while (instruction_timer > 0.f);
   }
+  int count = readByte(this, 0x36);
+  Serial.printf("IRQ-count: %d %d\n\r", count, readByte(this, 0x70));
+  Serial.printf("end:%lld\n", esp_timer_get_time());
+
+  while(true) {delay(1000);}
 }
 
 
@@ -186,10 +206,9 @@ int Machine::readIO(void * context, int addr)
 
 
 void Machine::writeIO(void * context, int addr, int value) {
-  Machine *m = (Machine *)context;
-  Serial.printf("writeIO 0x%x\n\r", addr, value);
-  if ((addr & 0xe000) == 0) {
-    m->WriteVram(addr, value);
+  if ((addr & 0xe000) == 0) { // 0x0000~0x1fff
+//    Machine *m = (Machine *)context;
+//    m->WriteVram(addr, value);
   }
 }
 

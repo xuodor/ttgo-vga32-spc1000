@@ -35,7 +35,7 @@
 
 #include "emudevs/Z80.h"
 
-extern const uint8_t spcrom[0x40];
+extern const uint8_t spcrom[0x80];
 
 
 class Machine;
