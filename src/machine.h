@@ -64,8 +64,10 @@ private:
 ////////////////////////////////////////////////////////////////////////////////////
 // Machine
 
-
-typedef void (*MenuCallback)();
+typedef struct {
+  int addr;
+  uint8_t mask;
+} KeyMat;
 
 
 class Machine {
@@ -99,8 +101,9 @@ public:
   bool realSpeed() { return m_realSpeed; }
 
 private:
-
   int nextStep();
+  KeyMat KeyMatFromVirt(fabgl::VirtualKey vk);
+  int KeyIOMatrix(int index);
 
   Device *     m_devices;
   bool         m_realSpeed;
@@ -108,4 +111,7 @@ private:
   uint8_t vram_[0x2000];
   fabgl::Z80   m_Z80;
   MC6847 mc6847;
+  fabgl::PS2Controller keyboard_;
+  KeyMat key_table_[fabgl::VK_LAST];
+  uint8_t key_matrix_[10] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 };

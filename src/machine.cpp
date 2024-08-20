@@ -106,14 +106,89 @@ void Machine::init() {
   mc6847.setPaletteItem(6, RGB888(0, 255, 255));
   mc6847.setPaletteItem(7, RGB888(255, 255, 255));
 
-  for (int y = 0; y < 480; ++y) {
-    for (int x = 0; x < 640; ++x) {
-      if (!(48 <= y && y < 480-64 && 64 <= x && x < 640-64)) {
-        mc6847.directSetPixel(x, y, 2);
-      }
-    }
-  }
+  keyboard_.begin(PS2Preset::KeyboardPort0);
 
+  for (int i = fabgl::VK_NONE; i < fabgl::VK_LAST; ++i) {
+    key_table_[i] = { -1, 0 };
+  }
+  key_table_[fabgl::VK_RSHIFT] = { 0, 0x02 };
+  key_table_[fabgl::VK_LSHIFT] = { 0, 0x02 };
+  key_table_[fabgl::VK_LCTRL] = { 0, 0x04 };
+  key_table_[fabgl::VK_RCTRL] = { 0, 0x04 };
+  key_table_[fabgl::VK_PRINTSCREEN] = { 0, 0x10 };
+  key_table_[fabgl::VK_LALT] = { 0, 0x40 };
+  key_table_[fabgl::VK_RALT] = { 0, 0x40 };
+
+  key_table_[fabgl::VK_GRAVEACCENT] = { 1, 0x01 };
+  key_table_[fabgl::VK_HOME] = { 1, 0x02 };
+  key_table_[fabgl::VK_SPACE] = { 1, 0x04 };
+  key_table_[fabgl::VK_RETURN] = { 1, 0x08 };
+  key_table_[fabgl::VK_c] = { 1, 0x10 };
+  key_table_[fabgl::VK_a] = { 1, 0x20 };
+  key_table_[fabgl::VK_q] = { 1, 0x40 };
+  key_table_[fabgl::VK_q] = { 1, 0x80 };
+
+  key_table_[fabgl::VK_TAB] = { 2, 0x01 };
+  key_table_[fabgl::VK_z] = { 2, 0x04 };
+  key_table_[fabgl::VK_RIGHTBRACKET] = { 1, 0x08 };
+  key_table_[fabgl::VK_v] = { 2, 0x10 };
+  key_table_[fabgl::VK_s] = { 2, 0x20 };
+  key_table_[fabgl::VK_w] = { 2, 0x40 };
+  key_table_[fabgl::VK_2] = { 2, 0x80 };
+
+  key_table_[fabgl::VK_BACKSPACE] = { 3, 0x01 };
+  key_table_[fabgl::VK_ESCAPE] = { 3, 0x04 };
+  key_table_[fabgl::VK_LEFTBRACKET] = { 3, 0x08 };
+  key_table_[fabgl::VK_b] = { 3, 0x10 };
+  key_table_[fabgl::VK_d] = { 3, 0x20 };
+  key_table_[fabgl::VK_e] = { 3, 0x40 };
+  key_table_[fabgl::VK_3] = { 3, 0x80 };
+
+  key_table_[fabgl::VK_RIGHT] = { 4, 0x04 };
+  key_table_[fabgl::VK_BACKSLASH] = { 4, 0x08 };
+  key_table_[fabgl::VK_n] = { 4, 0x10 };
+  key_table_[fabgl::VK_f] = { 4, 0x20 };
+  key_table_[fabgl::VK_r] = { 4, 0x40 };
+  key_table_[fabgl::VK_4] = { 4, 0x80 };
+
+  key_table_[fabgl::VK_F1] = { 5, 0x02 };
+  key_table_[fabgl::VK_LEFT] = { 5, 0x04 };
+  key_table_[fabgl::VK_m] = { 5, 0x10 };
+  key_table_[fabgl::VK_g] = { 5, 0x20 };
+  key_table_[fabgl::VK_t] = { 5, 0x40 };
+  key_table_[fabgl::VK_5] = { 5, 0x80 };
+
+  key_table_[fabgl::VK_F2] = { 6, 0x02 };
+  key_table_[fabgl::VK_EQUALS] = { 6, 0x04 };
+  key_table_[fabgl::VK_x] = { 6, 0x08 };
+  key_table_[fabgl::VK_COMMA] = { 6, 0x10 };
+  key_table_[fabgl::VK_h] = { 6, 0x20 };
+  key_table_[fabgl::VK_y] = { 6, 0x40 };
+  key_table_[fabgl::VK_6] = { 6, 0x80 };
+
+  key_table_[fabgl::VK_F3] = { 7, 0x02 };
+  key_table_[fabgl::VK_UP] = { 7, 0x04 };
+  key_table_[fabgl::VK_p] = { 7, 0x08 };
+  key_table_[fabgl::VK_PERIOD] = { 7, 0x10 };
+  key_table_[fabgl::VK_j] = { 7, 0x20 };
+  key_table_[fabgl::VK_u] = { 7, 0x40 };
+  key_table_[fabgl::VK_7] = { 7, 0x80 };
+
+  key_table_[fabgl::VK_F4] = { 8, 0x02 };
+  key_table_[fabgl::VK_DOWN] = { 8, 0x04 };
+  key_table_[fabgl::VK_QUOTE] = { 8, 0x08 };
+  key_table_[fabgl::VK_SLASH] = { 8, 0x10 };
+  key_table_[fabgl::VK_k] = { 8, 0x20 };
+  key_table_[fabgl::VK_i] = { 8, 0x40 };
+  key_table_[fabgl::VK_8] = { 8, 0x80 };
+
+  key_table_[fabgl::VK_F5] = { 9, 0x02 };
+  key_table_[fabgl::VK_MINUS] = { 9, 0x04 };
+  key_table_[fabgl::VK_0] = { 9, 0x08 };
+  key_table_[fabgl::VK_SEMICOLON] = { 9, 0x10 };
+  key_table_[fabgl::VK_l] = { 9, 0x20 };
+  key_table_[fabgl::VK_o] = { 9, 0x40 };
+  key_table_[fabgl::VK_9] = { 9, 0x80 };
 }
 
 void Machine::load(int address, uint8_t const * data, int length)
@@ -137,7 +212,7 @@ int Machine::nextStep()
 
 void Machine::run()
 {
-  const int refresh_set_ = 1;
+  const int refresh_set_ = 2;
 
   m_Z80.reset();
 
@@ -145,6 +220,10 @@ void Machine::run()
   int64_t interrupt_timer = INTR_PERIOD;
   int64_t cur_ts;
   int refresh_timer = refresh_set_;
+
+  constexpr int timeToCheckKeyboardReset = 200000;
+  int timeToCheckKeyboard = timeToCheckKeyboardReset;
+
 
   Serial.printf("start:%lld\n", esp_timer_get_time());
   while (true) {
@@ -174,6 +253,36 @@ void Machine::run()
         if (refresh_set_) refresh_timer--;
       }
     } while (instruction_timer > 0.f);
+
+    timeToCheckKeyboard -= cycles;
+    if (timeToCheckKeyboard < 0) {
+      timeToCheckKeyboard = timeToCheckKeyboardReset;
+      auto kbd = fabgl::PS2Controller::keyboard();
+      if (kbd->virtualKeyAvailable()) {
+        VirtualKeyItem item;
+        if (kbd->getNextVirtualKey(&item)) {
+          KeyMat km = KeyMatFromVirt(item.vk);
+          if (km.addr >= 0) {
+            if (item.down)
+              key_matrix_[km.addr] &= ~km.mask;
+            else
+              key_matrix_[km.addr] |= km.mask;
+          }
+/*
+          Serial.printf("%s: ", kbd->virtualKeyToString(item.vk));
+          Serial.printf("\tASCII = 0x%02X\t", item.ASCII);
+          if (item.ASCII >= ' ')
+            Serial.printf("'%c'", item.ASCII);
+          Serial.printf("\t%s", item.down ? "DN" : "UP");
+          Serial.printf("\t[");
+          for (int i = 0; i < 8 && item.scancode[i] != 0; ++i)
+            Serial.printf("%02X ", item.scancode[i]);
+          Serial.printf("]");
+          Serial.printf("\r\n");
+*/
+        }
+      }
+    }
   }
   int count = readByte(this, 0x36);
   Serial.printf("IRQ-count: %d %d\n\r", count, readByte(this, 0x70));
@@ -196,7 +305,10 @@ void Machine::writeByte(void * context, int address, int value)
 
 int Machine::readIO(void * context, int addr)
 {
-  Serial.printf("readIO 0x%x\n\r", addr);
+  if (0x8000 <= addr && addr <= 0x8009) {
+    Machine *m = (Machine *)context;
+    return m->KeyIOMatrix(addr-0x8000);
+  }
   return 0xff;
 }
 
@@ -210,4 +322,12 @@ void Machine::writeIO(void * context, int addr, int value) {
 
 void Machine::WriteVram(int addr, int value) {
   vram_[addr] = value;
+}
+
+KeyMat Machine::KeyMatFromVirt(fabgl::VirtualKey vk) {
+  return key_table_[static_cast<int>(vk)];
+}
+
+int Machine::KeyIOMatrix(int index) {
+  return key_matrix_[index];
 }
