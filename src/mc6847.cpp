@@ -15,15 +15,32 @@ void MC6847::InitVRAM(uint8_t *mem) {
 }
 
 void MC6847::RefreshScreen() {
-  int page;
-  int attr;
+  unsigned char *font;
+  int fgColor = 2;
+  int bgColor = 0;
+  int page_base;
+  int attr_base;
 
-  page = current_page_ * 0x200;
-  attr = page + 0x800;
+  page_base = current_page_ * 0x200;
+  attr_base = page_base + 0x800;
 
-  for (int y = 0; y < 16; y++) {
-    for (int x = 0; x < 32; x++) {
-      PutChar(x*8, y*12, vram_[page + y*32+x], vram_[attr + y*32+x]);
+  for (int y = 0; y < 192; ++y) {
+    for (int x = 0; x < 256; x++) {
+      int yb = y / 12;
+      int xb = x >> 3;
+      uint8_t code = vram_[page_base + yb*32+xb];
+      uint8_t attr = vram_[attr_base + yb*32+xb];
+
+      font = font_internal_ + (code - 32) * 12;  // 8x12
+      uint8_t xf = x % 8;
+      uint8_t fb = font[y%12];
+      uint8_t inv = attr & 0x01;
+      uint8_t pix = (fb & (0x80 >> xf)) ? 1 : 0;
+      int color = pix ^ inv ? fgColor : bgColor;
+      directSetPixel(kOffsetX_+x*2  , kOffsetY_+y*2, color);
+      directSetPixel(kOffsetX_+x*2+1, kOffsetY_+y*2, color);
+      directSetPixel(kOffsetX_+x*2  , kOffsetY_+y*2+1, bgColor);
+      directSetPixel(kOffsetX_+x*2+1, kOffsetY_+y*2+1, bgColor);
     }
   }
 }
