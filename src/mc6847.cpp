@@ -36,7 +36,15 @@ void MC6847::RefreshScreen() {
         uint8_t code = vram_[page_base + yb*32+xb];
         uint8_t attr = vram_[attr_base + yb*32+xb];
 
-        font = font_internal_ + (code - 32) * 12;  // 8x12
+        if (code < 32 && !(attr & 0x08)) code = 32;
+        if ((attr & 0x08) && (code < 96)) code += 128;
+
+        if (96 <= code && code < 128)
+          font = vram_ + 0x1600+(code-96)*16;
+        else if (128 <= code && code < 224)
+          font = vram_ + 0x1000+(code-128)*16;
+        else
+          font = font_internal_ + (code-32)*12;  // 8x12
         uint8_t xf = x % 8;
         uint8_t fb = font[yf];
         uint8_t inv = attr & 0x01;

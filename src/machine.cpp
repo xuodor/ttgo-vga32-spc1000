@@ -91,8 +91,8 @@ void Machine::attachDevice(Device * device)
 
 void Machine::init() {
   memset(m_RAM, 0, 65536);
-  load(0, rom, 0x8000);
 
+  load(0, rom, 0x8000);
   mc6847.begin();
   mc6847.setResolution(VGA_640x480_60Hz);
   mc6847.InitVRAM(vram_);
@@ -123,78 +123,142 @@ void Machine::init() {
   key_table_[fabgl::VK_HOME] = { 1, 0x02 };
   key_table_[fabgl::VK_SPACE] = { 1, 0x04 };
   key_table_[fabgl::VK_RETURN] = { 1, 0x08 };
+  key_table_[fabgl::VK_C] = { 1, 0x10 };
   key_table_[fabgl::VK_c] = { 1, 0x10 };
+  key_table_[fabgl::VK_A] = { 1, 0x20 };
   key_table_[fabgl::VK_a] = { 1, 0x20 };
   key_table_[fabgl::VK_q] = { 1, 0x40 };
-  key_table_[fabgl::VK_q] = { 1, 0x80 };
+  key_table_[fabgl::VK_Q] = { 1, 0x40 };
+  key_table_[fabgl::VK_EXCLAIM] = { 1, 0x80 };
+  key_table_[fabgl::VK_1] = { 1, 0x80 };
 
   key_table_[fabgl::VK_TAB] = { 2, 0x01 };
+  key_table_[fabgl::VK_Z] = { 2, 0x04 };
   key_table_[fabgl::VK_z] = { 2, 0x04 };
+  key_table_[fabgl::VK_RIGHTBRACE] = { 1, 0x08 };
   key_table_[fabgl::VK_RIGHTBRACKET] = { 1, 0x08 };
+  key_table_[fabgl::VK_V] = { 2, 0x10 };
   key_table_[fabgl::VK_v] = { 2, 0x10 };
+  key_table_[fabgl::VK_S] = { 2, 0x20 };
   key_table_[fabgl::VK_s] = { 2, 0x20 };
+  key_table_[fabgl::VK_W] = { 2, 0x40 };
   key_table_[fabgl::VK_w] = { 2, 0x40 };
+  key_table_[fabgl::VK_AT] = { 2, 0x80 };
   key_table_[fabgl::VK_2] = { 2, 0x80 };
 
   key_table_[fabgl::VK_BACKSPACE] = { 3, 0x01 };
   key_table_[fabgl::VK_ESCAPE] = { 3, 0x04 };
+  key_table_[fabgl::VK_LEFTBRACE] = { 3, 0x08 };
   key_table_[fabgl::VK_LEFTBRACKET] = { 3, 0x08 };
+  key_table_[fabgl::VK_B] = { 3, 0x10 };
   key_table_[fabgl::VK_b] = { 3, 0x10 };
+  key_table_[fabgl::VK_D] = { 3, 0x20 };
   key_table_[fabgl::VK_d] = { 3, 0x20 };
+  key_table_[fabgl::VK_D] = { 3, 0x40 };
   key_table_[fabgl::VK_e] = { 3, 0x40 };
+  key_table_[fabgl::VK_HASH] = { 3, 0x80 };
   key_table_[fabgl::VK_3] = { 3, 0x80 };
 
   key_table_[fabgl::VK_RIGHT] = { 4, 0x04 };
   key_table_[fabgl::VK_BACKSLASH] = { 4, 0x08 };
+  key_table_[fabgl::VK_N] = { 4, 0x10 };
   key_table_[fabgl::VK_n] = { 4, 0x10 };
+  key_table_[fabgl::VK_F] = { 4, 0x20 };
   key_table_[fabgl::VK_f] = { 4, 0x20 };
+  key_table_[fabgl::VK_R] = { 4, 0x40 };
   key_table_[fabgl::VK_r] = { 4, 0x40 };
+  key_table_[fabgl::VK_DOLLAR] = { 4, 0x80 };
   key_table_[fabgl::VK_4] = { 4, 0x80 };
 
   key_table_[fabgl::VK_F1] = { 5, 0x02 };
   key_table_[fabgl::VK_LEFT] = { 5, 0x04 };
+  key_table_[fabgl::VK_M] = { 5, 0x10 };
   key_table_[fabgl::VK_m] = { 5, 0x10 };
+  key_table_[fabgl::VK_G] = { 5, 0x20 };
   key_table_[fabgl::VK_g] = { 5, 0x20 };
+  key_table_[fabgl::VK_Y] = { 5, 0x40 };
   key_table_[fabgl::VK_t] = { 5, 0x40 };
+  key_table_[fabgl::VK_PERCENT] = { 5, 0x80 };
   key_table_[fabgl::VK_5] = { 5, 0x80 };
 
   key_table_[fabgl::VK_F2] = { 6, 0x02 };
+  key_table_[fabgl::VK_PLUS] = { 6, 0x04 };
   key_table_[fabgl::VK_EQUALS] = { 6, 0x04 };
+  key_table_[fabgl::VK_X] = { 6, 0x08 };
   key_table_[fabgl::VK_x] = { 6, 0x08 };
+  key_table_[fabgl::VK_LESS] = { 6, 0x10 };
   key_table_[fabgl::VK_COMMA] = { 6, 0x10 };
+  key_table_[fabgl::VK_H] = { 6, 0x20 };
   key_table_[fabgl::VK_h] = { 6, 0x20 };
+  key_table_[fabgl::VK_Y] = { 6, 0x40 };
   key_table_[fabgl::VK_y] = { 6, 0x40 };
+  key_table_[fabgl::VK_CARET] = { 6, 0x80 };
   key_table_[fabgl::VK_6] = { 6, 0x80 };
 
   key_table_[fabgl::VK_F3] = { 7, 0x02 };
   key_table_[fabgl::VK_UP] = { 7, 0x04 };
+  key_table_[fabgl::VK_P] = { 7, 0x08 };
   key_table_[fabgl::VK_p] = { 7, 0x08 };
+  key_table_[fabgl::VK_GREATER] = { 7, 0x10 };
   key_table_[fabgl::VK_PERIOD] = { 7, 0x10 };
+  key_table_[fabgl::VK_J] = { 7, 0x20 };
   key_table_[fabgl::VK_j] = { 7, 0x20 };
+  key_table_[fabgl::VK_U] = { 7, 0x40 };
   key_table_[fabgl::VK_u] = { 7, 0x40 };
+  key_table_[fabgl::VK_AMPERSAND] = { 7, 0x80 };
   key_table_[fabgl::VK_7] = { 7, 0x80 };
 
   key_table_[fabgl::VK_F4] = { 8, 0x02 };
   key_table_[fabgl::VK_DOWN] = { 8, 0x04 };
+  key_table_[fabgl::VK_QUOTEDBL] = { 8, 0x08 };
   key_table_[fabgl::VK_QUOTE] = { 8, 0x08 };
+  key_table_[fabgl::VK_QUESTION] = { 8, 0x10 };
   key_table_[fabgl::VK_SLASH] = { 8, 0x10 };
+  key_table_[fabgl::VK_K] = { 8, 0x20 };
   key_table_[fabgl::VK_k] = { 8, 0x20 };
+  key_table_[fabgl::VK_I] = { 8, 0x40 };
   key_table_[fabgl::VK_i] = { 8, 0x40 };
+  key_table_[fabgl::VK_ASTERISK] = { 8, 0x80 };
   key_table_[fabgl::VK_8] = { 8, 0x80 };
 
   key_table_[fabgl::VK_F5] = { 9, 0x02 };
   key_table_[fabgl::VK_MINUS] = { 9, 0x04 };
+  key_table_[fabgl::VK_TILDE] = { 9, 0x04 };
+  key_table_[fabgl::VK_RIGHTPAREN] = { 9, 0x08 };
   key_table_[fabgl::VK_0] = { 9, 0x08 };
+  key_table_[fabgl::VK_COLON] = { 9, 0x10 };
   key_table_[fabgl::VK_SEMICOLON] = { 9, 0x10 };
+  key_table_[fabgl::VK_L] = { 9, 0x20 };
   key_table_[fabgl::VK_l] = { 9, 0x20 };
+  key_table_[fabgl::VK_O] = { 9, 0x40 };
   key_table_[fabgl::VK_o] = { 9, 0x40 };
+  key_table_[fabgl::VK_LEFTPAREN] = { 9, 0x80 };
   key_table_[fabgl::VK_9] = { 9, 0x80 };
 }
 
 void Machine::load(int address, uint8_t const * data, int length)
 {
-  for (int i = 0; i < length; ++i)
+  for (int i = 0; i < length; ++i) {
     m_RAM[address + i] = data[i];
+  }
+
+  m_RAM[0x1311] = 0x27; // 3b '(AT), :(SPC)
+  m_RAM[0x1320] = 0x3d;
+  m_RAM[0x1331] = 0x7c;
+  m_RAM[0x1341] = 0x5d;
+  m_RAM[0x1346] = 0x60;
+  m_RAM[0x1350] = 0x7f;
+  m_RAM[0x1351] = 0x29;
+  m_RAM[0x1352] = 0x3a; // 22 :(AT), +(SPC)
+  m_RAM[0x1355] = 0x28;
+  m_RAM[0x1359] = 0x22; // 3a "(AT), *(SPC)
+  m_RAM[0x135d] = 0x2a;
+  m_RAM[0x1365] = 0x26;
+  m_RAM[0x1368] = 0x2b;
+  m_RAM[0x136d] = 0x5e; // 53
+  m_RAM[0x1379] = 0x5c;
+  m_RAM[0x138d] = 0x40;
+  m_RAM[0x138e] = 0x7e;
 }
 
 void Machine::attachRAM(int RAMSize)
@@ -212,7 +276,7 @@ int Machine::nextStep()
 
 void Machine::run()
 {
-  const int refresh_set_ = 2;
+  const int refresh_set_ = 0;
 
   m_Z80.reset();
 
@@ -268,6 +332,7 @@ void Machine::run()
             else
               key_matrix_[km.addr] |= km.mask;
           }
+          Serial.printf("addr:%x vk:%d mat:%02x 0:%02x\n", km.addr, item.vk, key_matrix_[km.addr], key_matrix_[0]);
 /*
           Serial.printf("%s: ", kbd->virtualKeyToString(item.vk));
           Serial.printf("\tASCII = 0x%02X\t", item.ASCII);
