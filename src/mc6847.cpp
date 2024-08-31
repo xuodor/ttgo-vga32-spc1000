@@ -11,6 +11,7 @@ MC6847::MC6847() : fabgl::VGA8Controller() {
 
 void MC6847::InitVRAM(uint8_t *mem) {
   vram_ = mem;
+  memset(vram_, 0, 0x2000);
   font_internal_ = mc6847_font;
 }
 

@@ -87,6 +87,7 @@ public:
 
   void run();
   void WriteVram(int addr, int value);
+  int ReadVram(int addr);
 
   static int readByte(void * context, int address);
   static void writeByte(void * context, int address, int value);

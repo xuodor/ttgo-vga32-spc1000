@@ -305,11 +305,11 @@ void Machine::writeByte(void * context, int address, int value)
 
 int Machine::readIO(void * context, int addr)
 {
+  Machine *m = (Machine *)context;
   if (0x8000 <= addr && addr <= 0x8009) {
-    Machine *m = (Machine *)context;
     return m->KeyIOMatrix(addr-0x8000);
   }
-  return 0xff;
+  return m->ReadVram(addr);
 }
 
 
@@ -322,6 +322,10 @@ void Machine::writeIO(void * context, int addr, int value) {
 
 void Machine::WriteVram(int addr, int value) {
   vram_[addr] = value;
+}
+
+int Machine::ReadVram(int addr) {
+  return vram_[addr];
 }
 
 KeyMat Machine::KeyMatFromVirt(fabgl::VirtualKey vk) {
