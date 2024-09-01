@@ -245,31 +245,29 @@ void Machine::run()
 
   int64_t instruction_timer = 0;
   int64_t interrupt_timer = INTR_PERIOD;
-  int64_t cur_ts;
+  int64_t prev_ts = esp_timer_get_time();
 
-  constexpr int timeToCheckKeyboardReset = 20000;
+  int64_t acc_time = 0;
+  int64_t next_debug = 0;
+  constexpr int timeToCheckKeyboardReset = 1000*10;
   int timeToCheckKeyboard = timeToCheckKeyboardReset;
 
   while (true) {
     // Using the cycles consumed by the instruction code, give a delay before
     // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
     // instruction time == cycles*0.25 == cycles/4
-    int64_t cur_ts = esp_timer_get_time(); // us
+    int64_t ts = esp_timer_get_time(); // us
     int cycles = nextStep();
-    instruction_timer += cycles / 4;
-    do {
-      int64_t ts = esp_timer_get_time();
-      int64_t time_past = ts - cur_ts;
-      cur_ts = ts;
-      instruction_timer -= time_past;
-      interrupt_timer -= time_past;
-      if (interrupt_timer < 0.f) {
-        m_Z80.IRQ(/*not_used*/0);
-        interrupt_timer += INTR_PERIOD;
-      }
-    } while (instruction_timer > 0.f);
 
-    timeToCheckKeyboard -= cycles;
+    int64_t time_past = ts - prev_ts;
+    prev_ts = ts;
+    interrupt_timer -= time_past;
+    if (interrupt_timer < 0.f) {
+      m_Z80.IRQ(/*not_used*/0);
+      interrupt_timer += INTR_PERIOD;
+    }
+
+    timeToCheckKeyboard -= time_past;
     if (timeToCheckKeyboard < 0) {
       timeToCheckKeyboard = timeToCheckKeyboardReset;
       auto kbd = fabgl::PS2Controller::keyboard();
