@@ -54,24 +54,3 @@ void MC6847::RefreshScreen() {
     }
   }
 }
-
-void MC6847::PutChar(int x, int y, int ascii, int attr) {
-  unsigned char *font;
-  int fgColor = 2;
-  int bgColor = 0;
-
-  font = font_internal_ + (ascii - 32) * 12;  // 8x12
-  uint8_t inv = attr & 0x01;
-
-  for (int r = 0; r < 12; r++) {
-    for (int c = 0; c < 8; c++) {
-      int color = ((font[r] & (0x80 >> c)) ^ inv) ? fgColor : bgColor;
-      DrawCharDot(c + x, y + r, color);
-    }
-  }
-}
-
-void MC6847::DrawCharDot(int x, int y, int c) {
-  directSetPixel(kOffsetX_+x*2,   kOffsetY_+y*2, c);
-  directSetPixel(kOffsetX_+x*2+1, kOffsetY_+y*2, c);
-}

@@ -36,57 +36,23 @@
 #include "fabutils.h"
 
 extern uint8_t rom[];
-/*
-const uint8_t spcrom[0x80] = {
-  0xed, 0x56, 0xfb, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x2a, 0x70, 0x00, 0x23, 0x22, 0x70, 0x00, 0x00,
-
-  0x01, 0x03, 0x20, 0x3e, 0xaa, 0xed, 0x79, 0x00,
-  0x01, 0x02, 0x30, 0x3e, 0x55, 0xed, 0x79, 0x00,
-
-  0x01, 0x02, 0x40, 0x3e, 0xaa, 0xed, 0x79, 0x00,
-  0x01, 0x02, 0x80, 0x3e, 0x55, 0xed, 0x79, 0x00,
-
-  0xc3, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0xc3, 0x74, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-  0x00, 0x00, 0x00, 0x00, 0xe5, 0x2a, 0x36, 0x00,
-  0x23, 0x22, 0x36, 0x00, 0xe1, 0xfb, 0xed, 0x4d
-};
-*/
-
-////////////////////////////////////////////////////////////////////////////////////
-// Machine
 
 Machine::Machine()
   : m_devices(nullptr),
-    m_realSpeed(false)
-{
+    m_realSpeed(false) {
   m_Z80.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO, writeIO);
 }
 
 
-Machine::~Machine()
-{
+Machine::~Machine() {
 
 }
 
 
-void Machine::attachDevice(Device * device)
-{
+void Machine::attachDevice(Device * device) {
   device->next = m_devices;
   m_devices = device;
 }
-
 
 void Machine::init() {
   memset(m_RAM, 0, 65536);
@@ -281,11 +247,9 @@ void Machine::run()
   int64_t interrupt_timer = INTR_PERIOD;
   int64_t cur_ts;
 
-  constexpr int timeToCheckKeyboardReset = 200000;
+  constexpr int timeToCheckKeyboardReset = 20000;
   int timeToCheckKeyboard = timeToCheckKeyboardReset;
 
-
-  Serial.printf("start:%lld\n", esp_timer_get_time());
   while (true) {
     // Using the cycles consumed by the instruction code, give a delay before
     // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
@@ -323,10 +287,6 @@ void Machine::run()
       }
     }
   }
-  int count = readByte(this, 0x36);
-  Serial.printf("IRQ-count: %d %d\n\r", count, readByte(this, 0x70));
-  Serial.printf("end:%lld\n", esp_timer_get_time());
-  while(true) {delay(1000);}
 }
 
 
@@ -339,7 +299,6 @@ void Machine::writeByte(void * context, int address, int value) {
   ((Machine*)context)->m_RAM[address] = value;
 }
 
-
 int Machine::readIO(void * context, int addr) {
   Machine *m = (Machine *)context;
   if (0x8000 <= addr && addr <= 0x8009) {
@@ -347,7 +306,6 @@ int Machine::readIO(void * context, int addr) {
   }
   return m->ReadVram(addr);
 }
-
 
 void Machine::writeIO(void * context, int addr, int value) {
   if ((addr & 0xe000) == 0) { // 0x0000~0x1fff

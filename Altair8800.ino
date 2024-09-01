@@ -5,10 +5,11 @@ Machine spc1000;
 TaskHandle_t vdgTaskHandle;
 
 void vdgTask(void *params) {
+  Serial.printf("VDGTask: core: %d\n", xPortGetCoreID());
   MC6847 *vdg = (MC6847 *)params;
   while (true) {
     vdg->RefreshScreen();
-    vTaskDelay(16/portTICK_PERIOD_MS);
+    vTaskDelay(32/portTICK_PERIOD_MS);
   }
 }
 
@@ -21,5 +22,6 @@ void setup() {
 }
 
 void loop() {
+  Serial.printf("CPUTask: core: %d\n", xPortGetCoreID());
   spc1000.run();
 }

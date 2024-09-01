@@ -15,8 +15,6 @@ public:
   void operator=(MC6847 const&) = delete;
   void InitVRAM(uint8_t *mem);
   void RefreshScreen();
-  void PutChar(int x, int y, int ascii, int attr);
-  void DrawCharDot(int x, int y, int c);
 
 private:
   int current_page_;
