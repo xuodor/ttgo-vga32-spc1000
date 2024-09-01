@@ -67,6 +67,13 @@ const uint8_t spcrom[0x80] = {
 ////////////////////////////////////////////////////////////////////////////////////
 // Machine
 
+void graphicTask(void *vga) {
+  MC6847 *mc6847 = (MC6847 *)vga;
+  while (true) {
+    mc6847->RefreshScreen();
+    vTaskDelay(16/portTICK_PERIOD_MS);
+  }
+}
 
 Machine::Machine()
   : m_devices(nullptr),
@@ -105,6 +112,7 @@ void Machine::init() {
   mc6847.setPaletteItem(5, RGB888(255, 0, 255));
   mc6847.setPaletteItem(6, RGB888(0, 255, 255));
   mc6847.setPaletteItem(7, RGB888(255, 255, 255));
+//  xTaskCreatePinnedToCore(graphicTask, "VGA", 16*1024, &mc6847, configMAX_PRIORITIES - 2, &task_handle_, /*coreID*/1 );
 
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
@@ -311,7 +319,7 @@ void Machine::run()
         interrupt_timer += INTR_PERIOD;
         if (refresh_timer <= 0) {
           // Refresh screen 60Hz by default, same rate as the interrupt.
-          mc6847.RefreshScreen();
+          //mc6847.RefreshScreen();
           refresh_timer = refresh_set_;
         }
         if (refresh_set_) refresh_timer--;

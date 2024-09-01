@@ -30,6 +30,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "fabgl.h"
 #include "fabutils.h"
 
@@ -85,6 +87,7 @@ public:
 
   void attachRAM(int RAMSize);
 
+  MC6847 *vdg() { return &mc6847; }
   void run();
   void WriteVram(int addr, int value);
   int ReadVram(int addr);
@@ -106,6 +109,7 @@ private:
   KeyMat KeyMatFromVirt(fabgl::VirtualKey vk);
   int KeyIOMatrix(int index);
 
+  TaskHandle_t task_handle_;
   Device *     m_devices;
   bool         m_realSpeed;
   uint8_t m_RAM[0x10000];
