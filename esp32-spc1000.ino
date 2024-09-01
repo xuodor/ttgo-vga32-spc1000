@@ -1,7 +1,7 @@
 #include "freertos/FreeRTOS.h"
-#include "src/machine.h"
+#include "src/spc1000.h"
 
-Machine spc1000;
+SPC1000 spc;
 TaskHandle_t vdgTaskHandle;
 
 void vdgTask(void *params) {
@@ -15,13 +15,12 @@ void vdgTask(void *params) {
 
 void setup() {
   Serial.begin(115200);
-  spc1000.init();
-  spc1000.setRealSpeed(true);
-  xTaskCreate(vdgTask, "VDG", 16*1024, spc1000.vdg(), 2, &vdgTaskHandle);
+  spc.Init();
+  xTaskCreate(vdgTask, "VDG", 16*1024, spc.vdg(), 2, &vdgTaskHandle);
   configASSERT(vdgTaskHandle);
 }
 
 void loop() {
   Serial.printf("CPUTask: core: %d\n", xPortGetCoreID());
-  spc1000.run();
+  spc.Run();
 }

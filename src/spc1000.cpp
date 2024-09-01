@@ -1,75 +1,50 @@
-/*
-  Created by Fabrizio Di Vittorio (fdivitto2013@gmail.com) - <http://www.fabgl.com>
-  Copyright (c) 2019-2022 Fabrizio Di Vittorio.
-  All rights reserved.
-
-
-* Please contact fdivitto2013@gmail.com if you need a commercial license.
-
-
-* This library and related software is available under GPL v3.
-
-  FabGL is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  FabGL is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with FabGL.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-
-
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/stat.h>
-
-#include "machine.h"
-
-#include "fabgl.h"
-#include "fabutils.h"
+#include "spc1000.h"
 
 extern uint8_t rom[];
 
-Machine::Machine()
-  : m_devices(nullptr),
-    m_realSpeed(false) {
-  m_Z80.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO, writeIO);
+namespace {
+
+int readByte(void *context, int address) {
+  return ((SPC1000*)context)->ReadMem(address);
 }
 
-
-Machine::~Machine() {
-
+void writeByte(void *context, int address, int value) {
+  ((SPC1000*)context)->WriteMem(address, value);
 }
 
-
-void Machine::attachDevice(Device * device) {
-  device->next = m_devices;
-  m_devices = device;
+int readWord(void *context, int addr) {
+  return readByte(context, addr) | (readByte(context, addr + 1) << 8);
 }
 
-void Machine::init() {
-  memset(m_RAM, 0, 65536);
+void writeWord(void *context, int addr, int value) {
+  writeByte(context, addr, value & 0xFF);
+  writeByte(context, addr + 1, value >> 8);
+}
 
-  load(0, rom, 0x8000);
-  mc6847.begin();
-  mc6847.setResolution(VGA_640x480_60Hz);
-  mc6847.InitVRAM(vram_);
+int readIO(void *context, int addr) {
+  SPC1000 *m = (SPC1000 *)context;
+  return m->ReadIO(addr);
+}
 
-  mc6847.setPaletteItem(0, RGB888(0, 0, 0));
-  mc6847.setPaletteItem(1, RGB888(255, 0, 0));
-  mc6847.setPaletteItem(2, RGB888(0, 255, 0));
-  mc6847.setPaletteItem(3, RGB888(0, 0, 255));
-  mc6847.setPaletteItem(4, RGB888(255, 255, 0));
-  mc6847.setPaletteItem(5, RGB888(255, 0, 255));
-  mc6847.setPaletteItem(6, RGB888(0, 255, 255));
-  mc6847.setPaletteItem(7, RGB888(255, 255, 255));
+void writeIO(void * context, int addr, int value) {
+  SPC1000 *m = (SPC1000 *)context;
+  if ((addr & 0xe000) == 0) { // 0x0000~0x1fff
+    m->WriteIO(addr, value);
+  }
+}
+} // namespace
+
+SPC1000::SPC1000() {}
+SPC1000::~SPC1000() {}
+
+void SPC1000::Init() {
+  cpu_.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO,
+                    writeIO);
+  memset(key_matrix_, 0xff, sizeof key_matrix_);
+  memset(mem_, 0, 65536);
+
+  LoadMem(0, rom, 0x8000);
+  mc6847_.Init(io_);
 
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
@@ -201,75 +176,68 @@ void Machine::init() {
   key_table_[fabgl::VK_9] = { 9, 0x80 };
 }
 
-void Machine::load(int address, uint8_t const * data, int length)
-{
-  for (int i = 0; i < length; ++i) {
-    m_RAM[address + i] = data[i];
+void SPC1000::LoadMem(int address, uint8_t const * data, int length) {
+  memcpy(mem_+address, data, length);
+
+  mem_[0x1311] = 0x27; // 3b '(AT), :(SPC)
+  mem_[0x1320] = 0x3d;
+  mem_[0x1331] = 0x7c;
+  mem_[0x1341] = 0x5d;
+  mem_[0x1346] = 0x60;
+  mem_[0x1350] = 0x7f;
+  mem_[0x1351] = 0x29;
+  mem_[0x1352] = 0x3a; // 22 :(AT), +(SPC)
+  mem_[0x1355] = 0x28;
+  mem_[0x1359] = 0x22; // 3a "(AT), *(SPC)
+  mem_[0x135d] = 0x2a;
+  mem_[0x1365] = 0x26;
+  mem_[0x1368] = 0x2b;
+  mem_[0x136d] = 0x5e; // 53
+  mem_[0x1379] = 0x5c;
+  mem_[0x138d] = 0x40;
+  mem_[0x138e] = 0x7e;
+}
+
+void SPC1000::WriteIO(int addr, int value) {
+  io_[addr] = value;
+}
+
+int SPC1000::ReadIO(int addr) {
+  if (0x8000 <= addr && addr <= 0x8009) {
+    return KeyIOMatrix(addr-0x8000);
   }
-
-  m_RAM[0x1311] = 0x27; // 3b '(AT), :(SPC)
-  m_RAM[0x1320] = 0x3d;
-  m_RAM[0x1331] = 0x7c;
-  m_RAM[0x1341] = 0x5d;
-  m_RAM[0x1346] = 0x60;
-  m_RAM[0x1350] = 0x7f;
-  m_RAM[0x1351] = 0x29;
-  m_RAM[0x1352] = 0x3a; // 22 :(AT), +(SPC)
-  m_RAM[0x1355] = 0x28;
-  m_RAM[0x1359] = 0x22; // 3a "(AT), *(SPC)
-  m_RAM[0x135d] = 0x2a;
-  m_RAM[0x1365] = 0x26;
-  m_RAM[0x1368] = 0x2b;
-  m_RAM[0x136d] = 0x5e; // 53
-  m_RAM[0x1379] = 0x5c;
-  m_RAM[0x138d] = 0x40;
-  m_RAM[0x138e] = 0x7e;
-}
-
-void Machine::attachRAM(int RAMSize)
-{
-
-}
-
-
-int Machine::nextStep()
-{
-  return m_Z80.step();
+  return io_[addr];
 }
 
 #define INTR_PERIOD 16666
+#define KBD_PERIOD 1000*10
 
-void Machine::run()
-{
-  m_Z80.reset();
+void SPC1000::Run() {
+  cpu_.reset();
 
   int64_t instruction_timer = 0;
   int64_t interrupt_timer = INTR_PERIOD;
+  int64_t kbd_timer = KBD_PERIOD;
   int64_t prev_ts = esp_timer_get_time();
-
-  int64_t acc_time = 0;
-  int64_t next_debug = 0;
-  constexpr int timeToCheckKeyboardReset = 1000*10;
-  int timeToCheckKeyboard = timeToCheckKeyboardReset;
 
   while (true) {
     // Using the cycles consumed by the instruction code, give a delay before
     // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
     // instruction time == cycles*0.25 == cycles/4
     int64_t ts = esp_timer_get_time(); // us
-    int cycles = nextStep();
+    int cycles = cpu_.step();
 
-    int64_t time_past = ts - prev_ts;
+    int64_t delta = ts - prev_ts;
     prev_ts = ts;
-    interrupt_timer -= time_past;
+    interrupt_timer -= delta;
     if (interrupt_timer < 0.f) {
-      m_Z80.IRQ(/*not_used*/0);
+      cpu_.IRQ(/*not_used*/0);
       interrupt_timer += INTR_PERIOD;
     }
 
-    timeToCheckKeyboard -= time_past;
-    if (timeToCheckKeyboard < 0) {
-      timeToCheckKeyboard = timeToCheckKeyboardReset;
+    kbd_timer -= delta;
+    if (kbd_timer < 0) {
+      kbd_timer = KBD_PERIOD;
       auto kbd = fabgl::PS2Controller::keyboard();
       if (kbd->virtualKeyAvailable()) {
         VirtualKeyItem item;
@@ -287,43 +255,6 @@ void Machine::run()
   }
 }
 
-
-int Machine::readByte(void * context, int address) {
-  return ((Machine*)context)->m_RAM[address];
-}
-
-
-void Machine::writeByte(void * context, int address, int value) {
-  ((Machine*)context)->m_RAM[address] = value;
-}
-
-int Machine::readIO(void * context, int addr) {
-  Machine *m = (Machine *)context;
-  if (0x8000 <= addr && addr <= 0x8009) {
-    return m->KeyIOMatrix(addr-0x8000);
-  }
-  return m->ReadVram(addr);
-}
-
-void Machine::writeIO(void * context, int addr, int value) {
-  if ((addr & 0xe000) == 0) { // 0x0000~0x1fff
-    Machine *m = (Machine *)context;
-    m->WriteVram(addr, value);
-  }
-}
-
-void Machine::WriteVram(int addr, int value) {
-  vram_[addr] = value;
-}
-
-int Machine::ReadVram(int addr) {
-  return vram_[addr];
-}
-
-KeyMat Machine::KeyMatFromVirt(fabgl::VirtualKey vk) {
+KeyMat SPC1000::KeyMatFromVirt(fabgl::VirtualKey vk) {
   return key_table_[static_cast<int>(vk)];
-}
-
-int Machine::KeyIOMatrix(int index) {
-  return key_matrix_[index];
 }
