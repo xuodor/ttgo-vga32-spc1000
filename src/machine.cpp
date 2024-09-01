@@ -67,14 +67,6 @@ const uint8_t spcrom[0x80] = {
 ////////////////////////////////////////////////////////////////////////////////////
 // Machine
 
-void graphicTask(void *vga) {
-  MC6847 *mc6847 = (MC6847 *)vga;
-  while (true) {
-    mc6847->RefreshScreen();
-    vTaskDelay(16/portTICK_PERIOD_MS);
-  }
-}
-
 Machine::Machine()
   : m_devices(nullptr),
     m_realSpeed(false)
@@ -112,7 +104,6 @@ void Machine::init() {
   mc6847.setPaletteItem(5, RGB888(255, 0, 255));
   mc6847.setPaletteItem(6, RGB888(0, 255, 255));
   mc6847.setPaletteItem(7, RGB888(255, 255, 255));
-//  xTaskCreatePinnedToCore(graphicTask, "VGA", 16*1024, &mc6847, configMAX_PRIORITIES - 2, &task_handle_, /*coreID*/1 );
 
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
@@ -284,14 +275,11 @@ int Machine::nextStep()
 
 void Machine::run()
 {
-  const int refresh_set_ = 0;
-
   m_Z80.reset();
 
   int64_t instruction_timer = 0;
   int64_t interrupt_timer = INTR_PERIOD;
   int64_t cur_ts;
-  int refresh_timer = refresh_set_;
 
   constexpr int timeToCheckKeyboardReset = 200000;
   int timeToCheckKeyboard = timeToCheckKeyboardReset;
@@ -305,24 +293,15 @@ void Machine::run()
     int64_t cur_ts = esp_timer_get_time(); // us
     int cycles = nextStep();
     instruction_timer += cycles / 4;
-//    Serial.printf("cycles:%d pc:%x\n", cycles, m_Z80.getPC());
     do {
       int64_t ts = esp_timer_get_time();
       int64_t time_past = ts - cur_ts;
       cur_ts = ts;
-//      Serial.printf("diff: %lld code:%lld interrupt:%lld\n", time_past, instruction_timer, interrupt_timer);
       instruction_timer -= time_past;
       interrupt_timer -= time_past;
       if (interrupt_timer < 0.f) {
-//        Serial.printf("IRQ\n");
         m_Z80.IRQ(/*not_used*/0);
         interrupt_timer += INTR_PERIOD;
-        if (refresh_timer <= 0) {
-          // Refresh screen 60Hz by default, same rate as the interrupt.
-          //mc6847.RefreshScreen();
-          refresh_timer = refresh_set_;
-        }
-        if (refresh_set_) refresh_timer--;
       }
     } while (instruction_timer > 0.f);
 
@@ -340,19 +319,6 @@ void Machine::run()
             else
               key_matrix_[km.addr] |= km.mask;
           }
-          Serial.printf("addr:%x vk:%d mat:%02x 0:%02x\n", km.addr, item.vk, key_matrix_[km.addr], key_matrix_[0]);
-/*
-          Serial.printf("%s: ", kbd->virtualKeyToString(item.vk));
-          Serial.printf("\tASCII = 0x%02X\t", item.ASCII);
-          if (item.ASCII >= ' ')
-            Serial.printf("'%c'", item.ASCII);
-          Serial.printf("\t%s", item.down ? "DN" : "UP");
-          Serial.printf("\t[");
-          for (int i = 0; i < 8 && item.scancode[i] != 0; ++i)
-            Serial.printf("%02X ", item.scancode[i]);
-          Serial.printf("]");
-          Serial.printf("\r\n");
-*/
         }
       }
     }
@@ -364,20 +330,17 @@ void Machine::run()
 }
 
 
-int Machine::readByte(void * context, int address)
-{
+int Machine::readByte(void * context, int address) {
   return ((Machine*)context)->m_RAM[address];
 }
 
 
-void Machine::writeByte(void * context, int address, int value)
-{
+void Machine::writeByte(void * context, int address, int value) {
   ((Machine*)context)->m_RAM[address] = value;
 }
 
 
-int Machine::readIO(void * context, int addr)
-{
+int Machine::readIO(void * context, int addr) {
   Machine *m = (Machine *)context;
   if (0x8000 <= addr && addr <= 0x8009) {
     return m->KeyIOMatrix(addr-0x8000);
