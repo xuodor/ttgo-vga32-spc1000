@@ -13,7 +13,6 @@
 /*************************************************************/
 
 #include "AY8910.h"
-#include "Sound.h"
 #include <string.h>
 
 /** Reset8910() **********************************************/
@@ -143,11 +142,11 @@ void Write8910(register AY8910 *D,register byte R,register byte V)
           else
           {
             I=J<3? (((int)(D->R[J*2+1]&0x0F)<<8)+D->R[J*2]):(D->R[6]&0x1F);
-            D->Freq[J]=D->Clock/(I+1);
+            D->Freq[J]=I?(AY8910_BASE/I):0;
           }
         }
       break;
-      
+
     case 8:
     case 9:
     case 10:
@@ -176,6 +175,12 @@ void Write8910(register AY8910 *D,register byte R,register byte V)
       return;
 
     case 13:
+      /* Write value */
+      D->R[R] = V;
+      for (I = 8; I <= 10; I++)
+        if (D->R[I] & 0x10)
+          D->Phase[I - 8] = 1;
+      return;
     case 14:
     case 15:
       /* Write value */
@@ -200,19 +205,22 @@ void Write8910(register AY8910 *D,register byte R,register byte V)
 void Loop8910(register AY8910 *D,int mS)
 {
   register int J,I,Step;
+  static int prevECount = 0;
 
   /* Exit if no envelope running */
   if(!D->EPeriod) return;
 
+  if (D->ECount == 0) prevECount = 0;
+
   /* Count milliseconds */
   D->ECount+=mS;
-  if(D->ECount<D->EPeriod) return;
 
   /* By how much do we change volume? */
-  Step=(D->ECount<<8)/D->EPeriod;
+  Step=((D->ECount-prevECount)<<8)/D->EPeriod;
 
   /* Count the remaining milliseconds */
   D->ECount%=D->EPeriod;
+  prevECount = D->ECount;
 
   for(J=0;J<3;J++)
     if(D->Phase[J]&&(D->R[J+8]&0x10))
@@ -267,7 +275,7 @@ void Loop8910(register AY8910 *D,int mS)
           I=D->Volume[J]+Step;
           D->Volume[J+3]=D->Volume[J]=I<256? I:0;
           D->Changed|=(0x09<<J)&~D->R[7];
-          break; 
+          break;
         case 13:
         case 15:
           I=D->Volume[J]+Step;
@@ -316,13 +324,13 @@ void Sync8910(register AY8910 *D,register byte Sync)
     if(D->Volume[3]&&D->Freq[3]) J+=D->Volume[3];
     if(D->Volume[4]&&D->Freq[4]) J+=D->Volume[4];
     if(D->Volume[5]&&D->Freq[5]) J+=D->Volume[5];
-    if(J) Drum(DRM_MIDI|28,(J+2)/3);
   }
 
   if(Sync!=AY8910_FLUSH) D->Sync=Sync;
 
-  for(J=0,I=D->Changed;I&&(J<AY8910_CHANNELS);J++,I>>=1)
-    if(I&1) Sound(J+D->First,D->Freq[J],D->Volume[J]);
+  for(J=0,I=D->Changed;I&&(J<AY8910_CHANNELS);J++,I>>=1) {
+    if(I&1) SndEnqueue(J+D->First,D->Freq[J],D->Volume[J]);
+  }
 
   D->Changed=0x00;
 }
