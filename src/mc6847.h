@@ -1,5 +1,3 @@
-#pragma once
-
 #include "dispdrivers/vga8controller.h"
 
 class MC6847 : public fabgl::VGA8Controller {

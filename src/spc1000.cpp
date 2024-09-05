@@ -46,6 +46,8 @@ void SPC1000::Init() {
   LoadMem(0, rom, 0x8000);
   mc6847_.Init(io_);
 
+  ay38910_.Init(&sound_generator_);
+
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
   for (int i = fabgl::VK_NONE; i < fabgl::VK_LAST; ++i) {
@@ -198,13 +200,29 @@ void SPC1000::LoadMem(int address, uint8_t const * data, int length) {
   mem_[0x138e] = 0x7e;
 }
 
-void SPC1000::WriteIO(int addr, int value) {
-  io_[addr] = value;
+void SPC1000::WriteIO(int addr, int data) {
+  if ((addr & 0xfffe) == 0x4000) {
+    if (addr & 0x01) {
+      ay38910_.Write(data);
+    } else {
+      ay38910_.WrCtrl(data);
+    }
+  } else {
+    io_[addr] = data;
+  }
 }
 
 int SPC1000::ReadIO(int addr) {
   if (0x8000 <= addr && addr <= 0x8009) {
     return KeyIOMatrix(addr-0x8000);
+  } else if ((addr & 0xfffe) == 0x4000) {
+    if (addr & 0x01) {
+      if (ay38910_.reg()  == 14) {
+        // TODO: Cassette
+        return 0;
+      } else
+        return ay38910_.RdData();
+    }
   }
   return io_[addr];
 }
@@ -219,6 +237,8 @@ void SPC1000::Run() {
   int64_t interrupt_timer = INTR_PERIOD;
   int64_t kbd_timer = KBD_PERIOD;
   int64_t prev_ts = esp_timer_get_time();
+
+  ay38910_.Loop(0);
 
   while (true) {
     // Using the cycles consumed by the instruction code, give a delay before

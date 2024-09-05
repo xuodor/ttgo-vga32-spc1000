@@ -6,6 +6,7 @@
 #include "fabgl.h"
 #include "emudevs/Z80.h"
 #include "mc6847.h"
+#include "ay38910.h"
 
 typedef struct {
   int addr;
@@ -33,9 +34,12 @@ private:
 
   uint8_t mem_[0x10000];
   uint8_t io_[0x2000];
-  fabgl::Z80 cpu_;
   MC6847 mc6847_;
-  fabgl::PS2Controller keyboard_;
+  AY38910 ay38910_;
   KeyMat key_table_[fabgl::VK_LAST];
   uint8_t key_matrix_[10];
+
+  fabgl::Z80 cpu_;
+  fabgl::PS2Controller keyboard_;
+  fabgl::SoundGenerator sound_generator_;
 };
