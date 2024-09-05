@@ -34,12 +34,13 @@ private:
 
   uint8_t mem_[0x10000];
   uint8_t io_[0x2000];
-  MC6847 mc6847_;
-  AY38910 ay38910_;
   KeyMat key_table_[fabgl::VK_LAST];
   uint8_t key_matrix_[10];
 
   fabgl::Z80 cpu_;
   fabgl::PS2Controller keyboard_;
   fabgl::SoundGenerator sound_generator_;
+
+  MC6847 mc6847_;
+  AY38910 ay38910_;
 };

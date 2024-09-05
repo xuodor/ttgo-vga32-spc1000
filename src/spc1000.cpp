@@ -28,9 +28,7 @@ int readIO(void *context, int addr) {
 
 void writeIO(void * context, int addr, int value) {
   SPC1000 *m = (SPC1000 *)context;
-  if ((addr & 0xe000) == 0) { // 0x0000~0x1fff
-    m->WriteIO(addr, value);
-  }
+  m->WriteIO(addr, value);
 }
 } // namespace
 
@@ -45,8 +43,7 @@ void SPC1000::Init() {
 
   LoadMem(0, rom, 0x8000);
   mc6847_.Init(io_);
-
-  ay38910_.Init(&sound_generator_);
+  ay38910_.Reset(0);
 
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
@@ -201,54 +198,56 @@ void SPC1000::LoadMem(int address, uint8_t const * data, int length) {
 }
 
 void SPC1000::WriteIO(int addr, int data) {
-  if ((addr & 0xfffe) == 0x4000) {
-    if (addr & 0x01) {
-      ay38910_.Write(data);
-    } else {
-      ay38910_.WrCtrl(data);
-    }
-  } else {
+  if (0x0000 <= addr && addr < 0x2000) {
     io_[addr] = data;
+    return;
+  } else if (addr == 0x4000) {
+    ay38910_.WrCtrl(data);
+  } else if (addr == 0x4001) {
+    ay38910_.Write(data);
   }
 }
 
 int SPC1000::ReadIO(int addr) {
-  if (0x8000 <= addr && addr <= 0x8009) {
+  if (0x0000 <= addr && addr < 0x2000) {
+    return io_[addr];
+  } else if (0x8000 <= addr && addr <= 0x8009) {
     return KeyIOMatrix(addr-0x8000);
   } else if ((addr & 0xfffe) == 0x4000) {
-    if (addr & 0x01) {
-      if (ay38910_.reg()  == 14) {
-        // TODO: Cassette
-        return 0;
-      } else
-        return ay38910_.RdData();
-    }
+    return ay38910_.RdData();
   }
-  return io_[addr];
+  return 0;
 }
-
+// Interrupt every 16.666ms = 1/60 second
+// PSG every 1ms
 #define INTR_PERIOD 16666
 #define KBD_PERIOD 1000*10
+#define PSG_PERIOD 1000
 
 void SPC1000::Run() {
   cpu_.reset();
 
-  int64_t instruction_timer = 0;
   int64_t interrupt_timer = INTR_PERIOD;
   int64_t kbd_timer = KBD_PERIOD;
-  int64_t prev_ts = esp_timer_get_time();
+  int64_t psg_timer = PSG_PERIOD;
 
+  int64_t prev_ts, prev_psg_ts;
+  int64_t base_ts, ts;
+  base_ts = esp_timer_get_time();
+  prev_psg_ts = prev_ts = 0;
+
+  int64_t delta;
+  ay38910_.Init(&sound_generator_);
   ay38910_.Loop(0);
 
   while (true) {
     // Using the cycles consumed by the instruction code, give a delay before
     // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
     // instruction time == cycles*0.25 == cycles/4
-    int64_t ts = esp_timer_get_time(); // us
     int cycles = cpu_.step();
+    ts = esp_timer_get_time() - base_ts; // us
+    delta = ts - prev_ts;
 
-    int64_t delta = ts - prev_ts;
-    prev_ts = ts;
     interrupt_timer -= delta;
     if (interrupt_timer < 0.f) {
       cpu_.IRQ(/*not_used*/0);
@@ -272,6 +271,14 @@ void SPC1000::Run() {
         }
       }
     }
+
+    psg_timer -= delta;
+    if (psg_timer < 0) {
+      ay38910_.Loop((ts - prev_psg_ts)/1000);
+      prev_psg_ts = ts;
+      psg_timer += PSG_PERIOD;
+    }
+    prev_ts = ts;
   }
 }
 
