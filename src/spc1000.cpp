@@ -36,8 +36,7 @@ SPC1000::SPC1000() {}
 SPC1000::~SPC1000() {}
 
 void SPC1000::Init() {
-  cpu_.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO,
-                    writeIO);
+  cpu_.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO, writeIO);
   memset(key_matrix_, 0xff, sizeof key_matrix_);
   memset(mem_, 0, 65536);
 
