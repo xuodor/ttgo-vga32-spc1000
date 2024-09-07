@@ -35,5 +35,5 @@ byte AY38910::RdData() {
 }
 
 void AY38910::Loop(int mS) {
-  Loop8910(&psg_, 0);
+  Loop8910(&psg_, mS);
 }

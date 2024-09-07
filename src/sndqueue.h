@@ -24,7 +24,8 @@ typedef struct {
   TSndQEntry qentry[MAX_SNDQ];
 } TSndQ;
 
-#define AY8910_BASE     111861 /* Base frequency for AY8910  */
+//#define AY8910_BASE     111861 /* Base frequency for AY8910  */
+#define AY8910_BASE     223722 /* Base frequency for AY8910  */
 
 #define SND_MELODIC     0      /* Melodic sound (default)    */
 #define SND_RECTANGLE   0      /* Rectangular wave           */

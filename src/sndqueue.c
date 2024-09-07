@@ -23,8 +23,8 @@ static int Phase[6];
 static int DevFreq;
 static volatile int JF = 0;
 
-//#define DEVFREQ 22050
-#define DEVFREQ 44100
+#define DEVFREQ 32900
+//#define DEVFREQ 44100
 
 void Sound(int Chn, int Freq, int Volume) {
   int interval;
