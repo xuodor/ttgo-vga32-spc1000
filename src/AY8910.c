@@ -147,7 +147,7 @@ void Write8910(register AY8910 *D,register byte R,register byte V)
           }
         }
       break;
-
+      
     case 8:
     case 9:
     case 10:
@@ -267,7 +267,7 @@ void Loop8910(register AY8910 *D,int mS)
           I=D->Volume[J]+Step;
           D->Volume[J+3]=D->Volume[J]=I<256? I:0;
           D->Changed|=(0x09<<J)&~D->R[7];
-          break;
+          break; 
         case 13:
         case 15:
           I=D->Volume[J]+Step;
@@ -322,7 +322,7 @@ void Sync8910(register AY8910 *D,register byte Sync)
   if(Sync!=AY8910_FLUSH) D->Sync=Sync;
 
   for(J=0,I=D->Changed;I&&(J<AY8910_CHANNELS);J++,I>>=1)
-    if(I&1) SndEnqueue(J+D->First,D->Freq[J],D->Volume[J]);
+    if(I&1) Sound(J+D->First,D->Freq[J],D->Volume[J]);
 
   D->Changed=0x00;
 }

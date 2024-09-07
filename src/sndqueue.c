@@ -21,12 +21,11 @@ static int Interval[6];
 static int NoiseInterval[6];
 static int Phase[6];
 static int DevFreq;
-static volatile int JF = 0;
 
 #define DEVFREQ 32900
 //#define DEVFREQ 44100
 
-void Sound(int Chn, int Freq, int Volume) {
+void SndLatch(int Chn, int Freq, int Volume) {
   int interval;
 
   interval = Freq ? (DevFreq / Freq) : 0;
@@ -40,10 +39,13 @@ void Sound(int Chn, int Freq, int Volume) {
     Vol[Chn] = Volume * 5;
 }
 
+void Sound(int Chn, int Freq, int Volume) {
+  SndEnqueue(Chn, Freq, Vol);
+}
+
 void SndQueueInit(void) {
   DevFreq = DEVFREQ;
   queue_ = xQueueCreate(100, sizeof(TSndQEntry));
-
   LastBufTime = GetTicks();
 }
 
@@ -87,7 +89,7 @@ int SndGetSample() {
   {
     SndDequeue(&qentry);
 
-    Sound(qentry.chn, qentry.freq, qentry.vol);
+    SndLatch(qentry.chn, qentry.freq, qentry.vol);
     qTime = SndPeekQueue();
   }
 
@@ -134,7 +136,7 @@ int SndGetSample() {
   LastBufTime = GetTicks();
   while (SndPeekQueue() >= 0) {
     SndDequeue(&qentry);
-    Sound(qentry.chn, qentry.freq, qentry.vol);
+    SndLatch(qentry.chn, qentry.freq, qentry.vol);
   }
   return R1;
 }
