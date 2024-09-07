@@ -5,20 +5,21 @@
 AY38910::AY38910() {}
 
 void AY38910::Init(fabgl::SoundGenerator *sg) {
-  Reset(0);
   SndQueueInit();
+  Reset();
   sg->setVolume(126);
   sg->play(true);
   sg->attach(this);
   enable(true);
+  Loop(0);
 }
 
 int AY38910::getSample() {
   return SndGetSample();
 }
 
-void AY38910::Reset(int first) {
-  Reset8910(&psg_, AY8910_BASE << 4, first);
+void AY38910::Reset() {
+  Reset8910(&psg_, AY8910_BASE << 4, 0);
 }
 
 void AY38910::Write(byte data) {

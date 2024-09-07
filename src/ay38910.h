@@ -14,7 +14,7 @@ class AY38910 : public fabgl::WaveformGenerator {
   int getSample();
 
   // Interface to Marat's AY8910 emulator
-  void Reset(int rirst);
+  void Reset();
   void Write(byte data);
   void WrCtrl(byte data);
   void WrData(byte data) {}  // Not used

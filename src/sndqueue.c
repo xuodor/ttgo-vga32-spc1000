@@ -45,8 +45,6 @@ void SndQueueInit(void) {
   queue_ = xQueueCreate(100, sizeof(TSndQEntry));
 
   LastBufTime = GetTicks();
-  for (int i = 0; i < 6; i++)
-    Sound(i, 0, 0);
 }
 
 int SndEnqueue(int Chn, int Freq, int Vol) {

@@ -43,7 +43,7 @@ void SPC1000::Init() {
 
   LoadMem(0, rom, 0x8000);
   mc6847_.Init(io_);
-  ay38910_.Reset(0);
+  ay38910_.Init(&sound_generator_);
 
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
@@ -237,8 +237,6 @@ void SPC1000::Run() {
   prev_psg_ts = prev_ts = 0;
 
   int64_t delta;
-  ay38910_.Init(&sound_generator_);
-  ay38910_.Loop(0);
 
   while (true) {
     // Using the cycles consumed by the instruction code, give a delay before
