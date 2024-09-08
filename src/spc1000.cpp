@@ -1,6 +1,33 @@
 #include "spc1000.h"
 
+#define I_PERIOD 4000
+#define INTR_PERIOD 16.666
+
 extern uint8_t rom[];
+
+extern SPC1000 spc;
+
+extern "C" {
+void WrZ80(register uint16 Addr,register byte Value) {
+  spc.WriteMem(Addr, Value);
+}
+byte RdZ80(register uint16 Addr) {
+  return spc.ReadMem(Addr);
+}
+
+void OutZ80(register uint16 Port,register byte Value) {
+  spc.WriteIO(Port, Value);
+}
+
+byte InZ80(register uint16 Port) {
+  return spc.ReadIO(Port);
+}
+void CheckHook(register Z80 *R) {}
+
+void PatchZ80(register Z80 *R) {}
+
+uint16 LoopZ80(register Z80 *R) { return INT_NONE; }
+}
 
 namespace {
 
@@ -30,13 +57,17 @@ void writeIO(void * context, int addr, int value) {
   SPC1000 *m = (SPC1000 *)context;
   m->WriteIO(addr, value);
 }
+
+int32_t GetTicks() {
+  return esp_timer_get_time()/1000;
+}
+
 } // namespace
 
 SPC1000::SPC1000() {}
 SPC1000::~SPC1000() {}
 
 void SPC1000::Init() {
-  cpu_.setCallbacks(this, readByte, writeByte, readWord, writeWord, readIO, writeIO);
   memset(key_matrix_, 0xff, sizeof key_matrix_);
   memset(mem_, 0, 65536);
 
@@ -45,6 +76,14 @@ void SPC1000::Init() {
   ay38910_.Init(&sound_generator_);
 
   keyboard_.begin(PS2Preset::KeyboardPort0);
+
+  ResetZ80(&cpu_);
+  cpu_.ICount = I_PERIOD;
+  tick = 0;
+  refrTimer = 0;
+  refrSet = 0;
+
+  ay38910_.Loop(0);
 
   for (int i = fabgl::VK_NONE; i < fabgl::VK_LAST; ++i) {
     key_table_[i] = { -1, 0 };
@@ -217,40 +256,50 @@ int SPC1000::ReadIO(int addr) {
   }
   return 0;
 }
-// Interrupt every 16.666ms = 1/60 second
-// PSG every 1ms
-#define INTR_PERIOD 16666
+
+
 #define KBD_PERIOD 1000*10
-#define PSG_PERIOD 1000
 
 void SPC1000::Run() {
-  cpu_.reset();
-
-  int64_t interrupt_timer = INTR_PERIOD;
-  int64_t kbd_timer = KBD_PERIOD;
-  int64_t psg_timer = PSG_PERIOD;
-
-  int64_t prev_ts, prev_psg_ts;
-  int64_t base_ts, ts;
-  base_ts = esp_timer_get_time();
-  prev_psg_ts = prev_ts = 0;
-
-  int64_t delta;
+  int turboState = 0;
+  int prevTurboState = 0;
 
   while (true) {
-    // Using the cycles consumed by the instruction code, give a delay before
-    // executing the next instruction. At 4MHz, each cycle lasts 0.25us, so
-    // instruction time == cycles*0.25 == cycles/4
-    int cycles = cpu_.step();
-    ts = esp_timer_get_time() - base_ts; // us
-    delta = ts - prev_ts;
+    if (cpu_.ICount <= 0) {
+      tick++;
+      cpu_.ICount += I_PERIOD;
+      intrTime -= 1.0;
+      if (intrTime < 0) {
+        intrTime += INTR_PERIOD;
+        if (cpu_.IFF & IFF_EI) {
+          cpu_.IFF |= IFF_IM1 | IFF_1;
+          IntZ80(&cpu_, 0);
+        }
+      }
 
-    interrupt_timer -= delta;
-    if (interrupt_timer < 0.f) {
-      cpu_.IRQ(/*not_used*/0);
-      interrupt_timer += INTR_PERIOD;
+      simul.curTick = GetTicks() - simul.baseTick;
+      if (simul.curTick - simul.prevTick > 0) {
+        // TODO: call AY-3-8910 routine periodically
+        //
+        simul.prevTick = simul.curTick;
+      }
+
+      turboState = cas.motor || turbo;
+      if (prevTurboState && !turboState && simul.curTick < tick) {
+        tick = simul.curTick; // adjust timing if turbo state turned off
+      }
+      prevTurboState = turboState;
+
+      while (!turboState && (simul.curTick < tick)) {
+        vTaskDelay(1);
+        simul.curTick = GetTicks() - simul.baseTick;
+        // Loop8910(&spc.IO.ay8910, curTick - prevTick);
+      }
     }
+    ExecZ80(&cpu_);
+  }
 
+/*
     kbd_timer -= delta;
     if (kbd_timer < 0) {
       kbd_timer = KBD_PERIOD;
@@ -276,7 +325,7 @@ void SPC1000::Run() {
       psg_timer += PSG_PERIOD;
     }
     prev_ts = ts;
-  }
+  */
 }
 
 KeyMat SPC1000::KeyMatFromVirt(fabgl::VirtualKey vk) {
