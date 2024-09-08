@@ -8,9 +8,11 @@ extern uint8_t rom[];
 extern SPC1000 spc;
 
 extern "C" {
+
 void WrZ80(register uint16 Addr,register byte Value) {
   spc.WriteMem(Addr, Value);
 }
+
 byte RdZ80(register uint16 Addr) {
   return spc.ReadMem(Addr);
 }
@@ -22,45 +24,15 @@ void OutZ80(register uint16 Port,register byte Value) {
 byte InZ80(register uint16 Port) {
   return spc.ReadIO(Port);
 }
+
 void CheckHook(register Z80 *R) {}
-
 void PatchZ80(register Z80 *R) {}
-
 uint16 LoopZ80(register Z80 *R) { return INT_NONE; }
 }
 
 namespace {
 
-int readByte(void *context, int address) {
-  return ((SPC1000*)context)->ReadMem(address);
-}
-
-void writeByte(void *context, int address, int value) {
-  ((SPC1000*)context)->WriteMem(address, value);
-}
-
-int readWord(void *context, int addr) {
-  return readByte(context, addr) | (readByte(context, addr + 1) << 8);
-}
-
-void writeWord(void *context, int addr, int value) {
-  writeByte(context, addr, value & 0xFF);
-  writeByte(context, addr + 1, value >> 8);
-}
-
-int readIO(void *context, int addr) {
-  SPC1000 *m = (SPC1000 *)context;
-  return m->ReadIO(addr);
-}
-
-void writeIO(void * context, int addr, int value) {
-  SPC1000 *m = (SPC1000 *)context;
-  m->WriteIO(addr, value);
-}
-
-int32_t GetTicks() {
-  return esp_timer_get_time()/1000;
-}
+int32_t GetTicks() {  return esp_timer_get_time()/1000; }
 
 } // namespace
 
@@ -258,19 +230,33 @@ int SPC1000::ReadIO(int addr) {
 }
 
 
-#define KBD_PERIOD 1000*10
+#define KBD_PERIOD 100
 
 void SPC1000::Run() {
   int turboState = 0;
   int prevTurboState = 0;
+  int32_t kbd_timer = KBD_PERIOD;
+  simul.baseTick = GetTicks();
+  simul.prevTick = simul.baseTick;
 
+#define NN 10000000
+  int c=NN;
+  int sum_cycles = 0;
+  int pre_i = I_PERIOD;
+  int intr_count = 0;
+  int64_t base_ts = esp_timer_get_time();
+
+  // while (c--) {
   while (true) {
+    sum_cycles += (pre_i - cpu_.ICount);
+
     if (cpu_.ICount <= 0) {
       tick++;
       cpu_.ICount += I_PERIOD;
       intrTime -= 1.0;
       if (intrTime < 0) {
         intrTime += INTR_PERIOD;
+        intr_count++;
         if (cpu_.IFF & IFF_EI) {
           cpu_.IFF |= IFF_IM1 | IFF_1;
           IntZ80(&cpu_, 0);
@@ -278,10 +264,28 @@ void SPC1000::Run() {
       }
 
       simul.curTick = GetTicks() - simul.baseTick;
-      if (simul.curTick - simul.prevTick > 0) {
-        // TODO: call AY-3-8910 routine periodically
-        //
+      int32_t deltaMs = simul.curTick - simul.prevTick;
+      if (deltaMs > 0) {
+        ay38910_.Loop(deltaMs);
         simul.prevTick = simul.curTick;
+      }
+
+      kbd_timer--;
+      if (kbd_timer <= 0) {
+        kbd_timer = KBD_PERIOD;
+        auto kbd = fabgl::PS2Controller::keyboard();
+        if (kbd->virtualKeyAvailable()) {
+          VirtualKeyItem item;
+          if (kbd->getNextVirtualKey(&item)) {
+            KeyMat km = KeyMatFromVirt(item.vk);
+            if (km.addr >= 0) {
+              if (item.down)
+                key_matrix_[km.addr] &= ~km.mask;
+              else
+                key_matrix_[km.addr] |= km.mask;
+            }
+          }
+        }
       }
 
       turboState = cas.motor || turbo;
@@ -293,11 +297,16 @@ void SPC1000::Run() {
       while (!turboState && (simul.curTick < tick)) {
         vTaskDelay(1);
         simul.curTick = GetTicks() - simul.baseTick;
-        // Loop8910(&spc.IO.ay8910, curTick - prevTick);
+        ay38910_.Loop(simul.curTick - simul.prevTick);
       }
     }
+    pre_i = cpu_.ICount;
+
     ExecZ80(&cpu_);
   }
+  int64_t ts = esp_timer_get_time() - base_ts; // us
+  Serial.printf("average: delta: %ld cycle: %f int-cout: %d\n", ts, sum_cycles/4.0, intr_count);
+  for(;;);
 
 /*
     kbd_timer -= delta;
