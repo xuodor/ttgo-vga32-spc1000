@@ -61,6 +61,6 @@ private:
   int refrTimer;   // timer for screen refresh
   int refrSet;     // init value for screen refresh timer
   double intrTime; // variable for interrupt timing
-  uint32_t kbd_timer;
+  int32_t kbd_timer;
   SPCSimul simul;
 };

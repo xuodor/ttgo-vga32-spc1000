@@ -2,6 +2,7 @@
 
 #define I_PERIOD 4000
 #define INTR_PERIOD 16.666
+#define KBD_PERIOD 50
 
 extern uint8_t rom[];
 
@@ -49,17 +50,15 @@ SPC1000::SPC1000() {}
 SPC1000::~SPC1000() {}
 
 void SPC1000::Init() {
-  ay38910_.Init(&sound_generator_);
-
-  memset(key_matrix_, 0xff, sizeof key_matrix_);
-  memset(mem_, 0, 65536);
+  InitMem();
 
   mc6847_.Init(io_);
-
+  ay38910_.Init(&sound_generator_);
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
   ResetZ80(&cpu_);
   cpu_.ICount = I_PERIOD;
+  kbd_timer = KBD_PERIOD;
   tick = 0;
   refrTimer = 0;
   refrSet = 0;
@@ -194,23 +193,8 @@ void SPC1000::Init() {
 }
 
 void SPC1000::InitMem() {
-  mem_[0x1311] = 0x27; // 3b '(AT), :(SPC)
-  mem_[0x1320] = 0x3d;
-  mem_[0x1331] = 0x7c;
-  mem_[0x1341] = 0x5d;
-  mem_[0x1346] = 0x60;
-  mem_[0x1350] = 0x7f;
-  mem_[0x1351] = 0x29;
-  mem_[0x1352] = 0x3a; // 22 :(AT), +(SPC)
-  mem_[0x1355] = 0x28;
-  mem_[0x1359] = 0x22; // 3a "(AT), *(SPC)
-  mem_[0x135d] = 0x2a;
-  mem_[0x1365] = 0x26;
-  mem_[0x1368] = 0x2b;
-  mem_[0x136d] = 0x5e; // 53
-  mem_[0x1379] = 0x5c;
-  mem_[0x138d] = 0x40;
-  mem_[0x138e] = 0x7e;
+  memset(key_matrix_, 0xff, sizeof key_matrix_);
+  memset(mem_, 0, 65536);
 }
 
 int SPC1000::ReadMem(int addr) {
@@ -246,8 +230,6 @@ int SPC1000::ReadIO(int addr) {
 }
 
 
-#define KBD_PERIOD 100
-
 void SPC1000::Run() {
   int turboState = 0;
   int prevTurboState = 0;
@@ -278,14 +260,14 @@ void SPC1000::Run() {
         }
       }
 
+      PollKeyboard();
+
       simul.curTick = GetTicks() - simul.baseTick;
       int32_t deltaMs = simul.curTick - simul.prevTick;
       if (deltaMs > 0) {
         ay38910_.Loop(deltaMs);
         simul.prevTick = simul.curTick;
       }
-
-      PollKeyboard();
 
       turboState = cas.motor || turbo;
       if (prevTurboState && !turboState && simul.curTick < tick) {
