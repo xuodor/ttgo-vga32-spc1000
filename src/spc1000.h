@@ -52,14 +52,14 @@ public:
   void Run();
   MC6847 *vdg() { return &mc6847_; }
   void WriteMem(int addr, int value) { mem_[addr] = value; }
-  int ReadMem(int addr) { return mem_[addr]; }
+  int ReadMem(int addr);
   void WriteIO(int addr, int value);
   int ReadIO(int addr);
 
 private:
   KeyMat KeyMatFromVirt(fabgl::VirtualKey vk);
   int KeyIOMatrix(int index) { return key_matrix_[index]; }
-  void LoadMem(int address, uint8_t const * data, int length);
+  void InitMem();
 
   uint8_t mem_[0x10000];
   uint8_t io_[0x2000];

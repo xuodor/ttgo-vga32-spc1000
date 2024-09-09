@@ -43,7 +43,6 @@ void SPC1000::Init() {
   memset(key_matrix_, 0xff, sizeof key_matrix_);
   memset(mem_, 0, 65536);
 
-  LoadMem(0, rom, 0x8000);
   mc6847_.Init(io_);
   ay38910_.Init(&sound_generator_);
 
@@ -54,6 +53,7 @@ void SPC1000::Init() {
   tick = 0;
   refrTimer = 0;
   refrSet = 0;
+  iplk_ = 1;
 
   ay38910_.Loop(0);
 
@@ -185,9 +185,7 @@ void SPC1000::Init() {
   key_table_[fabgl::VK_9] = { 9, 0x80 };
 }
 
-void SPC1000::LoadMem(int address, uint8_t const * data, int length) {
-  memcpy(mem_+address, data, length);
-
+void SPC1000::InitMem() {
   mem_[0x1311] = 0x27; // 3b '(AT), :(SPC)
   mem_[0x1320] = 0x3d;
   mem_[0x1331] = 0x7c;
@@ -205,6 +203,10 @@ void SPC1000::LoadMem(int address, uint8_t const * data, int length) {
   mem_[0x1379] = 0x5c;
   mem_[0x138d] = 0x40;
   mem_[0x138e] = 0x7e;
+}
+
+int SPC1000::ReadMem(int addr) {
+  return iplk_ ? rom[addr & 0x7fff] : mem_[addr];
 }
 
 void SPC1000::WriteIO(int addr, int data) {
@@ -225,6 +227,8 @@ int SPC1000::ReadIO(int addr) {
     return KeyIOMatrix(addr-0x8000);
   } else if ((addr & 0xfffe) == 0x4000) {
     return ay38910_.RdData();
+  } else if ((addr & 0xe000) == 0xa000) {
+    iplk_ = 0;
   }
   return 0;
 }

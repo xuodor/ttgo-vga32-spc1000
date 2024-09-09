@@ -36,7 +36,7 @@ void SndLatch(int Chn, int Freq, int Volume) {
   if (Interval[Chn] == 0)
     Vol[Chn] = 0;
   else
-    Vol[Chn] = Volume * 5;
+    Vol[Chn] = Volume * 30;
 }
 
 void Sound(int Chn, int Freq, int Volume) {
