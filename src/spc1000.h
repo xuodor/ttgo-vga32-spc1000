@@ -4,37 +4,15 @@
 #include <stdio.h>
 
 #include "fabgl.h"
-#include "Z80.h"
 #include "mc6847.h"
 #include "ay38910.h"
-
-#define CAS_STOP 0
-#define CAS_PLAY 1
-#define CAS_REC 2
+#include "Z80.h"
+#include "cassette.h"
 
 typedef struct {
   int addr;
   uint8_t mask;
 } KeyMat;
-
-/**
- * Cassette structure for tape processing, included in the SPCIO
- */
-typedef struct {
-  int motor; // Motor Status
-  int pulse; // Motor Pulse (0->1->0) causes motor state to flip
-  int button;
-  int rdVal;
-  uint32_t startTime;
-  uint32_t cnt0, cnt1;
-
-  int wrVal;
-  uint32_t wrRisingT; // rising time
-
-  FILE *wfp;
-  FILE *rfp;
-  int dos;  // DOS command signal
-} Cassette;
 
 /**
  * Timestamps to keep emulation speed at 4MHz
@@ -55,11 +33,13 @@ public:
   int ReadMem(int addr);
   void WriteIO(int addr, int value);
   int ReadIO(int addr);
+  uint32_t cas_start_time() { return tick*125 + ((4000-cpu_.ICount)>>5); }
 
 private:
   KeyMat KeyMatFromVirt(fabgl::VirtualKey vk);
   int KeyIOMatrix(int index) { return key_matrix_[index]; }
   void InitMem();
+  void PollKeyboard();
 
   uint8_t mem_[0x10000];
   uint8_t io_[0x2000];
@@ -81,5 +61,6 @@ private:
   int refrTimer;   // timer for screen refresh
   int refrSet;     // init value for screen refresh timer
   double intrTime; // variable for interrupt timing
+  uint32_t kbd_timer;
   SPCSimul simul;
 };

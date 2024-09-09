@@ -28,6 +28,15 @@ byte InZ80(register uint16 Port) {
 void CheckHook(register Z80 *R) {}
 void PatchZ80(register Z80 *R) {}
 uint16 LoopZ80(register Z80 *R) { return INT_NONE; }
+
+uint32_t cas_start_time() {
+  return spc.cas_start_time();
+}
+
+int VK_ESCAPE = fabgl::VK_ESCAPE;
+int VK_RETURN = fabgl::VK_RETURN;
+int VK_UP = fabgl::VK_UP;
+int VK_DOWN = fabgl::VK_DOWN;
 }
 
 namespace {
@@ -40,11 +49,12 @@ SPC1000::SPC1000() {}
 SPC1000::~SPC1000() {}
 
 void SPC1000::Init() {
+  ay38910_.Init(&sound_generator_);
+
   memset(key_matrix_, 0xff, sizeof key_matrix_);
   memset(mem_, 0, 65536);
 
   mc6847_.Init(io_);
-  ay38910_.Init(&sound_generator_);
 
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
@@ -54,8 +64,6 @@ void SPC1000::Init() {
   refrTimer = 0;
   refrSet = 0;
   iplk_ = 1;
-
-  ay38910_.Loop(0);
 
   for (int i = fabgl::VK_NONE; i < fabgl::VK_LAST; ++i) {
     key_table_[i] = { -1, 0 };
@@ -226,7 +234,11 @@ int SPC1000::ReadIO(int addr) {
   } else if (0x8000 <= addr && addr <= 0x8009) {
     return KeyIOMatrix(addr-0x8000);
   } else if ((addr & 0xfffe) == 0x4000) {
-    return ay38910_.RdData();
+    if (ay38910_.reg() == 14) {
+      //////
+    } else {
+      return ay38910_.RdData();
+    }
   } else if ((addr & 0xe000) == 0xa000) {
     iplk_ = 0;
   }
@@ -239,7 +251,6 @@ int SPC1000::ReadIO(int addr) {
 void SPC1000::Run() {
   int turboState = 0;
   int prevTurboState = 0;
-  int32_t kbd_timer = KBD_PERIOD;
   simul.baseTick = GetTicks();
   simul.prevTick = simul.baseTick;
 
@@ -274,23 +285,7 @@ void SPC1000::Run() {
         simul.prevTick = simul.curTick;
       }
 
-      kbd_timer--;
-      if (kbd_timer <= 0) {
-        kbd_timer = KBD_PERIOD;
-        auto kbd = fabgl::PS2Controller::keyboard();
-        if (kbd->virtualKeyAvailable()) {
-          VirtualKeyItem item;
-          if (kbd->getNextVirtualKey(&item)) {
-            KeyMat km = KeyMatFromVirt(item.vk);
-            if (km.addr >= 0) {
-              if (item.down)
-                key_matrix_[km.addr] &= ~km.mask;
-              else
-                key_matrix_[km.addr] |= km.mask;
-            }
-          }
-        }
-      }
+      PollKeyboard();
 
       turboState = cas.motor || turbo;
       if (prevTurboState && !turboState && simul.curTick < tick) {
@@ -301,7 +296,6 @@ void SPC1000::Run() {
       while (!turboState && (simul.curTick < tick)) {
         vTaskDelay(1);
         simul.curTick = GetTicks() - simul.baseTick;
-        ay38910_.Loop(simul.curTick - simul.prevTick);
       }
     }
     pre_i = cpu_.ICount;
@@ -311,36 +305,26 @@ void SPC1000::Run() {
   int64_t ts = esp_timer_get_time() - base_ts; // us
   Serial.printf("average: delta: %ld cycle: %f int-cout: %d\n", ts, sum_cycles/4.0, intr_count);
   for(;;);
-
-/*
-    kbd_timer -= delta;
-    if (kbd_timer < 0) {
-      kbd_timer = KBD_PERIOD;
-      auto kbd = fabgl::PS2Controller::keyboard();
-      if (kbd->virtualKeyAvailable()) {
-        VirtualKeyItem item;
-        if (kbd->getNextVirtualKey(&item)) {
-          KeyMat km = KeyMatFromVirt(item.vk);
-          if (km.addr >= 0) {
-            if (item.down)
-              key_matrix_[km.addr] &= ~km.mask;
-            else
-              key_matrix_[km.addr] |= km.mask;
-          }
-        }
-      }
-    }
-
-    psg_timer -= delta;
-    if (psg_timer < 0) {
-      ay38910_.Loop((ts - prev_psg_ts)/1000);
-      prev_psg_ts = ts;
-      psg_timer += PSG_PERIOD;
-    }
-    prev_ts = ts;
-  */
 }
 
 KeyMat SPC1000::KeyMatFromVirt(fabgl::VirtualKey vk) {
   return key_table_[static_cast<int>(vk)];
+}
+
+void SPC1000::PollKeyboard() {
+  if (--kbd_timer > 0) return;
+  kbd_timer += KBD_PERIOD;
+  auto kbd = fabgl::PS2Controller::keyboard();
+  if (kbd->virtualKeyAvailable()) {
+    VirtualKeyItem item;
+    if (kbd->getNextVirtualKey(&item)) {
+      KeyMat km = KeyMatFromVirt(item.vk);
+      if (km.addr >= 0) {
+        if (item.down)
+          key_matrix_[km.addr] &= ~km.mask;
+        else
+          key_matrix_[km.addr] |= km.mask;
+      }
+    }
+  }
 }
