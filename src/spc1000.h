@@ -40,7 +40,7 @@ private:
   void InitMem();
   void PollKeyboard();
 
-  uint8_t mem_[0x10000];
+  uint8_t *mem_;
   uint8_t io_[0x2000];
   KeyMat key_table_[fabgl::VK_LAST];
   uint8_t key_matrix_[10];

@@ -4,7 +4,7 @@
 #define INTR_PERIOD 16.666
 #define KBD_PERIOD 50
 
-extern uint8_t rom[];
+extern uint8_t mem[];
 
 extern SPC1000 spc;
 
@@ -193,12 +193,12 @@ void SPC1000::Init() {
 }
 
 void SPC1000::InitMem() {
+  mem_ = mem;
   memset(key_matrix_, 0xff, sizeof key_matrix_);
-  memset(mem_, 0, 65536);
 }
 
 int SPC1000::ReadMem(int addr) {
-  return iplk_ ? rom[addr & 0x7fff] : mem_[addr];
+  return mem_[iplk_ ? addr & 0x7fff : addr];
 }
 
 void SPC1000::WriteIO(int addr, int data) {
