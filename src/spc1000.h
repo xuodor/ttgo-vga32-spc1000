@@ -7,7 +7,6 @@
 #include "mc6847.h"
 #include "ay38910.h"
 #include "Z80.h"
-#include "cassette.h"
 
 typedef struct {
   int addr;
@@ -45,7 +44,6 @@ private:
   uint8_t io_[0x2000];
   KeyMat key_table_[fabgl::VK_LAST];
   uint8_t key_matrix_[10];
-  Cassette cas;
   fabgl::PS2Controller keyboard_;
   fabgl::SoundGenerator sound_generator_;
 

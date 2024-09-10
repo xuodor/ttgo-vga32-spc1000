@@ -269,7 +269,7 @@ void SPC1000::Run() {
         simul.prevTick = simul.curTick;
       }
 
-      turboState = cas.motor || turbo;
+      turboState = 0; // cas.motor || turbo;
       if (prevTurboState && !turboState && simul.curTick < tick) {
         tick = simul.curTick; // adjust timing if turbo state turned off
       }
