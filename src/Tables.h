@@ -14,7 +14,7 @@
 /*************************************************************/
 #include "Z80.h"
 
-static byte Cycles[256] =
+const static byte Cycles[256] =
 {
    4,10, 7, 6, 4, 4, 7, 4, 4,11, 7, 6, 4, 4, 7, 4,
    8,10, 7, 6, 4, 4, 7, 4,12,11, 7, 6, 4, 4, 7, 4,
@@ -34,7 +34,7 @@ static byte Cycles[256] =
    5,10,10, 4,10,11, 7,11, 5, 6,10, 4,10, 0, 7,11
 };
 
-static byte CyclesCB[256] =
+const static byte CyclesCB[256] =
 {
    8, 8, 8, 8, 8, 8,15, 8, 8, 8, 8, 8, 8, 8,15, 8,
    8, 8, 8, 8, 8, 8,15, 8, 8, 8, 8, 8, 8, 8,15, 8,
@@ -54,7 +54,7 @@ static byte CyclesCB[256] =
    8, 8, 8, 8, 8, 8,15, 8, 8, 8, 8, 8, 8, 8,15, 8
 };
 
-static byte CyclesED[256] =
+const static byte CyclesED[256] =
 {
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -74,7 +74,7 @@ static byte CyclesED[256] =
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-static byte CyclesXX[256] =
+const static byte CyclesXX[256] =
 {
    0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0, 0, 0, 0, 0, 0,
    0, 0, 0, 0, 0, 0, 0, 0, 0,15, 0, 0, 0, 0, 0, 0,
@@ -94,7 +94,7 @@ static byte CyclesXX[256] =
    0, 0, 0, 0, 0, 0, 0, 0, 0,10, 0, 0, 0, 0, 0, 0
 };
 
-static byte CyclesXXCB[256] =
+const static byte CyclesXXCB[256] =
 {
    0, 0, 0, 0, 0, 0,23, 0, 0, 0, 0, 0, 0, 0,23, 0,
    0, 0, 0, 0, 0, 0,23, 0, 0, 0, 0, 0, 0, 0,23, 0,
@@ -114,7 +114,7 @@ static byte CyclesXXCB[256] =
    0, 0, 0, 0, 0, 0,23, 0, 0, 0, 0, 0, 0, 0,23, 0
 };
 
-static byte ZSTable[256] =
+const static byte ZSTable[256] =
 {
   Z_FLAG,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -142,7 +142,7 @@ static byte ZSTable[256] =
   S_FLAG,S_FLAG,S_FLAG,S_FLAG,S_FLAG,S_FLAG,S_FLAG,S_FLAG
 };
 
-static byte PZSTable[256] =
+const static byte PZSTable[256] =
 {
   Z_FLAG|P_FLAG,0,0,P_FLAG,0,P_FLAG,P_FLAG,0,
   0,P_FLAG,P_FLAG,0,P_FLAG,0,0,P_FLAG,
@@ -187,7 +187,7 @@ static byte PZSTable[256] =
   S_FLAG|P_FLAG,S_FLAG,S_FLAG,S_FLAG|P_FLAG
 };
 
-static uint16 DAATable[2048] =
+const static uint16 DAATable[2048] =
 {
   0x0044,0x0100,0x0200,0x0304,0x0400,0x0504,0x0604,0x0700,
   0x0808,0x090C,0x1010,0x1114,0x1214,0x1310,0x1414,0x1510,

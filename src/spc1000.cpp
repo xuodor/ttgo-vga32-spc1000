@@ -1,4 +1,5 @@
 #include "spc1000.h"
+#include "cassette.h"
 
 #define I_PERIOD 4000
 #define INTR_PERIOD 16.666
@@ -55,6 +56,7 @@ void SPC1000::Init() {
   mc6847_.Init(io_);
   ay38910_.Init(&sound_generator_);
   keyboard_.begin(PS2Preset::KeyboardPort0);
+  cas = new Cassette();
 
   ResetZ80(&cpu_);
   cpu_.ICount = I_PERIOD;
@@ -195,6 +197,8 @@ void SPC1000::Init() {
 void SPC1000::InitMem() {
   mem_ = mem;
   memset(key_matrix_, 0xff, sizeof key_matrix_);
+  io_ = (uint8_t *)malloc(0x2000);
+  key_table_ = (KeyMat *)malloc(sizeof(KeyMat) * (size_t)fabgl::VK_LAST);
 }
 
 int SPC1000::ReadMem(int addr) {
@@ -209,6 +213,8 @@ void SPC1000::WriteIO(int addr, int data) {
     ay38910_.WrCtrl(data);
   } else if (addr == 0x4001) {
     ay38910_.Write(data);
+  } else if ((addr & 0xe000) == 0x6000) {
+    CasIOWrite(cas, data);
   }
 }
 
@@ -219,7 +225,7 @@ int SPC1000::ReadIO(int addr) {
     return KeyIOMatrix(addr-0x8000);
   } else if ((addr & 0xfffe) == 0x4000) {
     if (ay38910_.reg() == 14) {
-      //////
+      return CasIORead(cas);
     } else {
       return ay38910_.RdData();
     }
@@ -269,7 +275,7 @@ void SPC1000::Run() {
         simul.prevTick = simul.curTick;
       }
 
-      turboState = 0; // cas.motor || turbo;
+      turboState = cas->motor || turbo;
       if (prevTurboState && !turboState && simul.curTick < tick) {
         tick = simul.curTick; // adjust timing if turbo state turned off
       }
@@ -289,10 +295,6 @@ void SPC1000::Run() {
   for(;;);
 }
 
-KeyMat SPC1000::KeyMatFromVirt(fabgl::VirtualKey vk) {
-  return key_table_[static_cast<int>(vk)];
-}
-
 void SPC1000::PollKeyboard() {
   if (--kbd_timer > 0) return;
   kbd_timer += KBD_PERIOD;
@@ -300,7 +302,7 @@ void SPC1000::PollKeyboard() {
   if (kbd->virtualKeyAvailable()) {
     VirtualKeyItem item;
     if (kbd->getNextVirtualKey(&item)) {
-      KeyMat km = KeyMatFromVirt(item.vk);
+      KeyMat km = key_table_[static_cast<int>(item.vk)];
       if (km.addr >= 0) {
         if (item.down)
           key_matrix_[km.addr] &= ~km.mask;

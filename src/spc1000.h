@@ -8,6 +8,8 @@
 #include "ay38910.h"
 #include "Z80.h"
 
+typedef struct _Cassette Cassette;
+
 typedef struct {
   int addr;
   uint8_t mask;
@@ -35,15 +37,15 @@ public:
   uint32_t cas_start_time() { return tick*125 + ((4000-cpu_.ICount)>>5); }
 
 private:
-  KeyMat KeyMatFromVirt(fabgl::VirtualKey vk);
   int KeyIOMatrix(int index) { return key_matrix_[index]; }
   void InitMem();
   void PollKeyboard();
 
   uint8_t *mem_;
-  uint8_t io_[0x2000];
-  KeyMat key_table_[fabgl::VK_LAST];
+  uint8_t *io_;
+  KeyMat *key_table_;
   uint8_t key_matrix_[10];
+  Cassette *cas;
   fabgl::PS2Controller keyboard_;
   fabgl::SoundGenerator sound_generator_;
 

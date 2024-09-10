@@ -15,7 +15,7 @@ int GetTicks() {
   return esp_timer_get_time() / 1000;  // ms
 }
 
-static int Freq[6];
+static int Freq[6] = {0};
 static int Vol[6];
 static int Interval[6];
 static int NoiseInterval[6];
