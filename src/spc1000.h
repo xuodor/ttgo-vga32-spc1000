@@ -6,7 +6,7 @@
 #include "fabgl.h"
 #include "mc6847.h"
 #include "ay38910.h"
-#include "Z80.h"
+#include "z80/Z80.h"
 
 typedef struct _Cassette Cassette;
 
