@@ -68,12 +68,7 @@ int SndDequeue(TSndQEntry *entry) {
 
 int SndPeekQueue() {
   TSndQEntry entry;
-
-  if (pdFALSE == xQueuePeekFromISR(queue_, &entry)) {
-    return -1; // likely empty
-  } else {
-    return entry.time;
-  }
+  return pdFALSE != xQueuePeekFromISR(queue_, &entry);
 }
 
 int SndGetSample() {
@@ -82,20 +77,14 @@ int SndGetSample() {
   int vTime, qTime; // virtual Time, queue Time
   TSndQEntry qentry;
 
-  vTime = 0;
-  qTime = SndPeekQueue();
-
-  while ((qTime != -1) && (vTime - qTime) > 0) // Check Sound Queue
-  {
+  while (SndPeekQueue()) {
     SndDequeue(&qentry);
-
     SndLatch(qentry.chn, qentry.freq, qentry.vol);
-    qTime = SndPeekQueue();
   }
 
   R1 = 0;
-  for (i = 0; i < 3; i++) // Tone Generation
-  {
+  // Tone Generation
+  for (i = 0; i < 3; i++) {
     if (Interval[i] && Vol[i]) {
       if (Phase[i] < (Interval[i] / 2)) {
         R1 += Vol[i];
@@ -112,8 +101,8 @@ int SndGetSample() {
     }
   }
 
-  for (i = 3; i < 6; i++) // Noise Generation
-  {
+  // Noise Generation
+  for (i = 3; i < 6; i++) {
     if (Interval[i] && Vol[i]) {
       if (Phase[i] == 0)
         NoiseInterval[i] = Interval[i] + (((150 * rand()) / RAND_MAX) - 75);
@@ -134,7 +123,7 @@ int SndGetSample() {
   }
 
   LastBufTime = GetTicks();
-  while (SndPeekQueue() >= 0) {
+  while (SndPeekQueue()) {
     SndDequeue(&qentry);
     SndLatch(qentry.chn, qentry.freq, qentry.vol);
   }
@@ -142,9 +131,7 @@ int SndGetSample() {
 }
 
 void SetSound(int Channel, int NewType) {
-  //	printf("SetSound: Chn=%d, NewType=%d\n", Channel, NewType);
 }
 
 void Drum(int Type,int Force) {
-
 }

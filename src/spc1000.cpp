@@ -241,6 +241,7 @@ void SPC1000::Run() {
   int prevTurboState = 0;
   simul.baseTick = GetTicks();
   simul.prevTick = simul.baseTick;
+  tick = 0;
 
 #define NN 10000000
   int c=NN;
