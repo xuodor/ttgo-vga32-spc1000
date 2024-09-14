@@ -1,5 +1,8 @@
 #include "spc1000.h"
 #include "cassette.h"
+#include "dos.h"
+#include "fabutils.h"
+#include "sysdep.h"
 
 #define I_PERIOD 4000
 #define INTR_PERIOD 16.666
@@ -35,17 +38,10 @@ uint32_t cas_start_time() {
   return spc.cas_start_time();
 }
 
-int VK_ESCAPE = fabgl::VK_ESCAPE;
-int VK_RETURN = fabgl::VK_RETURN;
-int VK_UP = fabgl::VK_UP;
-int VK_DOWN = fabgl::VK_DOWN;
+int can_display_char() {
+  return spc.vdg()->screen_mode() == 0;
 }
-
-namespace {
-
-int32_t GetTicks() {  return esp_timer_get_time()/1000; }
-
-} // namespace
+}  // extern "C"
 
 SPC1000::SPC1000() {}
 SPC1000::~SPC1000() {}
@@ -53,10 +49,14 @@ SPC1000::~SPC1000() {}
 void SPC1000::Init() {
   InitMem();
 
+  init_fs();
+  InitCassette(&cas);
+//  Serial.printf("dosbuf: %p\n", dosbuf_);
+  cas.motor = 0;
+  cas.pulse = 0;
   mc6847_.Init(io_);
   ay38910_.Init(&sound_generator_);
   keyboard_.begin(PS2Preset::KeyboardPort0);
-  cas = new Cassette();
 
   ResetZ80(&cpu_);
   cpu_.ICount = I_PERIOD;
@@ -214,7 +214,7 @@ void SPC1000::WriteIO(int addr, int data) {
   } else if (addr == 0x4001) {
     ay38910_.Write(data);
   } else if ((addr & 0xe000) == 0x6000) {
-    CasIOWrite(cas, data);
+    CasIOWrite(&cas, data);
   }
 }
 
@@ -224,10 +224,12 @@ int SPC1000::ReadIO(int addr) {
   } else if (0x8000 <= addr && addr <= 0x8009) {
     return KeyIOMatrix(addr-0x8000);
   } else if ((addr & 0xfffe) == 0x4000) {
-    if (ay38910_.reg() == 14) {
-      return CasIORead(cas);
-    } else {
-      return ay38910_.RdData();
+    if (addr & 0x01) {
+      if (ay38910_.reg() == 14) {
+        return CasIORead(&cas);
+      } else {
+        return ay38910_.RdData();
+      }
     }
   } else if ((addr & 0xe000) == 0xa000) {
     iplk_ = 0;
@@ -239,7 +241,7 @@ int SPC1000::ReadIO(int addr) {
 void SPC1000::Run() {
   int turboState = 0;
   int prevTurboState = 0;
-  simul.baseTick = GetTicks();
+  simul.baseTick = get_timestamp_ms();
   simul.prevTick = simul.baseTick;
   tick = 0;
 
@@ -269,14 +271,14 @@ void SPC1000::Run() {
 
       PollKeyboard();
 
-      simul.curTick = GetTicks() - simul.baseTick;
+      simul.curTick = get_timestamp_ms() - simul.baseTick;
       int32_t deltaMs = simul.curTick - simul.prevTick;
       if (deltaMs > 0) {
         ay38910_.Loop(deltaMs);
         simul.prevTick = simul.curTick;
       }
 
-      turboState = cas->motor || turbo;
+      turboState = cas.motor || turbo;
       if (prevTurboState && !turboState && simul.curTick < tick) {
         tick = simul.curTick; // adjust timing if turbo state turned off
       }
@@ -284,7 +286,7 @@ void SPC1000::Run() {
 
       while (!turboState && (simul.curTick < tick)) {
         vTaskDelay(1);
-        simul.curTick = GetTicks() - simul.baseTick;
+        simul.curTick = get_timestamp_ms() - simul.baseTick;
       }
     }
     pre_i = cpu_.ICount;
@@ -309,7 +311,48 @@ void SPC1000::PollKeyboard() {
           key_matrix_[km.addr] &= ~km.mask;
         else
           key_matrix_[km.addr] |= km.mask;
+      } else {
+        ProcessEmulatorKey(&item);
       }
     }
+  }
+}
+
+void SPC1000::ProcessEmulatorKey(VirtualKeyItem *item) {
+  if (item->vk == fabgl::VK_F8) {
+    // PLAY
+    if (!FileBrowser::mountSDCard(false, "/SD")) {
+      // TODO: show 'NO SDCARD FOUND'
+      return;
+    }
+/*
+    if (cas.rfp != NULL)
+      FCLOSE(cas.rfp);
+    if (cas.wfp != NULL)
+      FCLOSE(cas.wfp);
+*/
+    // TODO: FIX THIS - if (OpenTapeFile() < 0) break;
+    cas.button = CAS_PLAY;
+    cas.motor = 1;
+    cas.startTime = cas_start_time();
+    ResetCassette(&cas);
+  } else if (item->vk == fabgl::VK_F9) {
+    // REC
+    if (cas.rfp != NULL)
+      FCLOSE(cas.rfp);
+    if (cas.wfp != NULL)
+      FCLOSE(cas.wfp);
+    // TODO: FIX THIS - if (SaveAsTapeFile() < 0) break;
+    cas.button = CAS_REC;
+    cas.motor = 1;
+    ResetCassette(&cas);
+  } else if (item->vk == fabgl::VK_F10) {
+    // STOP
+    cas.button = CAS_STOP;
+    cas.motor = 0;
+    if (cas.rfp != NULL)
+      FCLOSE(cas.rfp);
+    if (cas.wfp != NULL)
+      FCLOSE(cas.wfp);
   }
 }

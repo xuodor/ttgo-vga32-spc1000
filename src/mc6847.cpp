@@ -2,7 +2,8 @@
 #include "mc6847.h"
 #include "fabgl.h"
 
-extern uint8_t mc6847_font[];
+//extern uint8_t mc6847_font[];
+extern uint8_t mem[];
 
 constexpr int kOffsetX_ = 64;
 constexpr int kOffsetY_ = 48;
@@ -18,7 +19,7 @@ void MC6847::Init(uint8_t *iomem) {
 
   iomem_ = iomem;
   memset(iomem_, 0, 0x2000);
-  font_internal_ = mc6847_font;
+  font_internal_ = &mem[0x524a]; //mc6847_font;
 
   setPaletteItem(0, RGB888(0, 0, 0));
   setPaletteItem(1, RGB888(255, 0, 0));

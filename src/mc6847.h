@@ -12,6 +12,8 @@ public:
   void Init(uint8_t *iomem);
   void RefreshScreen();
 
+  bool screen_mode() { return 0; }
+
 private:
   int current_page_;
   uint8_t *iomem_;

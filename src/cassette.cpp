@@ -1,7 +1,14 @@
 #include "cassette.h"
+#include "dos.h"
+#include "sysdep.h"
+#include <string.h>
+#include <stdlib.h>
 
 extern uint32_t cas_start_time();
 
+/*************************************************************/
+/** Cassette Tape Processing                                **/
+/*************************************************************/
 /**
  * Reset Cassette structure
  * @param cas cassette structure
@@ -10,7 +17,7 @@ void ResetCassette(Cassette *cas) {
   cas->rdVal = -2;
   cas->cnt0 = cas->cnt1 = 0;
 
-  cas->wrVal = 0; // correct location?
+  cas->wrVal = 0;
   cas->wrRisingT = 0;
 }
 
@@ -26,13 +33,12 @@ void InitCassette(Cassette *cas) {
   ResetCassette(cas);
 }
 
-/*************************************************************/
-/** Cassette Tape Processing                                **/
-/*************************************************************/
 int ReadVal(Cassette *cas) {
   int c = -1;
 
-  if (cas->rfp != NULL) {
+  if (dos_hasdata(dosbuf_)) {
+    return dos_read(dosbuf_);
+  } else  if (cas->rfp != NULL) {
     static int EOF_flag = 0;
 
     c = fgetc(cas->rfp);
@@ -52,7 +58,6 @@ int ReadVal(Cassette *cas) {
 int CasRead(Cassette *cas) {
   uint32_t curTime;
   int bitTime;
-
   curTime = cas_start_time() - cas->startTime;
   bitTime = (cas->rdVal == 0) ? 56 : (cas->rdVal == 1) ? 112 : 0;
 
@@ -98,35 +103,63 @@ void CasWrite(Cassette *cas, int val) {
     byte b = (curTime - cas->wrRisingT) < 32 ? '0' : '1';
     if (cas->wfp != NULL) {
       fputc(b, cas->wfp);
+    } else if (cas->dos) {
+      dos_putc(dosbuf_, b);
     }
   }
 
   cas->wrVal = val;
 }
 
+void CasDosCommand(Cassette *cas, byte Value) {
+  if (Value & 0x10) {  // DOS signal
+    if (!cas->dos) {
+      cas->dos = 1;
+      cas->button = CAS_REC;
+      dos_reset(dosbuf_);
+      if (cas->wfp) {
+        FCLOSE(cas->wfp);
+      }
+    }
+  } else if (cas->dos) {
+    cas->dos = 0;
+    if (cas->wfp) {
+      FCLOSE(cas->wfp);
+    }
+    uint32_t start_time = cas_start_time();
+    if (dos_exec(dosbuf_, cas, start_time)) {
+      ResetCassette(cas);
+    }
+  }
+}
+
 void CasIOWrite(Cassette *cas, byte Value) {
-    if (cas->button != CAS_STOP) {
-      if (Value & 0x02) { // Motor
-        if (cas->pulse == 0) {
-          cas->pulse = 1;
-        }
-      } else {
-        if (cas->pulse) {
-          cas->pulse = 0;
-          if (cas->motor) {
-            cas->motor = 0;
-          } else {
-            cas->motor = 1;
-            cas->startTime = cas_start_time();
-            ResetCassette(cas);
+  if (cas->button != CAS_STOP) {
+    if (Value & 0x02) { // Motor
+      if (cas->pulse == 0) {
+        cas->pulse = 1;
+      }
+    } else {
+      if (cas->pulse) {
+        cas->pulse = 0;
+        if (cas->motor) {
+          cas->motor = 0;
+          if (cas->dos) {
+            if (cas->wfp) FCLOSE(cas->wfp);
           }
+        } else {
+          cas->motor = 1;
+          cas->startTime = cas_start_time();
+          ResetCassette(cas);
         }
       }
-    } // != CAS_STOP
+    }
+  } // != CAS_STOP
 
-    if (cas->button == CAS_REC && cas->motor)
-      CasWrite(cas, Value & 0x01);
+  if (cas->button == CAS_REC && cas->motor)
+    CasWrite(cas, Value & 0x01);
 
+  CasDosCommand(cas, Value);
 }
 
 byte CasIORead(Cassette *cas) {

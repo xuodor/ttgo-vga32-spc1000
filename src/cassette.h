@@ -1,17 +1,19 @@
 #pragma once
 
-#include "common.h"
 #include <stdio.h>
 #include <stdint.h>
+#include "common.h"
 
 #define CAS_STOP 0
 #define CAS_PLAY 1
 #define CAS_REC 2
 
+#define FCLOSE(fp) fclose(fp), fp=NULL
+
 /**
  * Cassette structure for tape processing, included in the SPCIO
  */
-typedef struct _Cassette {
+typedef struct {
   int motor; // Motor Status
   int pulse; // Motor Pulse (0->1->0) causes motor state to flip
   int button;

@@ -7,13 +7,14 @@
 #include "mc6847.h"
 #include "ay38910.h"
 #include "z80/Z80.h"
-
-typedef struct _Cassette Cassette;
+#include "cassette.h"
+#include "dos.h"
 
 typedef struct {
   int addr;
   uint8_t mask;
 } KeyMat;
+
 
 /**
  * Timestamps to keep emulation speed at 4MHz
@@ -40,12 +41,13 @@ private:
   int KeyIOMatrix(int index) { return key_matrix_[index]; }
   void InitMem();
   void PollKeyboard();
+  void ProcessEmulatorKey(VirtualKeyItem *item);
 
   uint8_t *mem_;
   uint8_t *io_;
   KeyMat *key_table_;
   uint8_t key_matrix_[10];
-  Cassette *cas;
+  Cassette cas;
   fabgl::PS2Controller keyboard_;
   fabgl::SoundGenerator sound_generator_;
 
