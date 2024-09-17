@@ -17,9 +17,9 @@
 typedef unsigned long uint32;
 
 typedef struct {
+  byte buf[FIB_TAP_SIZE + MAX_BODY_TAP];
   size_t len;
   int p;
-  byte buf[FIB_TAP_SIZE + MAX_BODY_TAP];
 } DosBuf;
 
 #ifdef __cplusplus

@@ -3,10 +3,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "cassette.h"
 #include "dos.h"
 #include "osd.h"
 #include "sysdep.h"
+#include "cassette.h"
 
 /*
  * Handles disk-like operations with cassette interface.
@@ -17,40 +17,8 @@ typedef struct {
   DosBuf *dos_buf;
 } LoadData;
 
-LoadData load_params_;
 DosBuf *dosbuf_;
-
-int serial_printf(const char *s) {
-  Serial.printf(s);
-}
-
-void dos_read_log(Cassette *cas) {
-  static int cnt = 0;
-  if (++cnt > 0) {
-//    Serial.printf("cas-io-read: button: %d motor: %d\n", cas->button, cas->motor);
-  }
-}
-
-void dos_write_log(Cassette *cas, int val, uint32_t curTime) {
-  static int cnt = 0;
-  if (++cnt > 17000) {
- //   Serial.printf("cas-wrte: c:%05d cur-time:%d data:%d\n", cnt, curTime, val);
-  }
-}
-
-void dos_ior_log(Cassette *cas, uint32_t curTime, int bitTime) {
-  static int cnt = 0;
-  if (++cnt > 17000) printf("cas-read: c:%05d cur-time:%d bit-time:%d\n", cnt, curTime, bitTime);
-
-}
-
-void dos_iow_log(Cassette *cas, byte Value) {
-  static int cnt = 0;
-  ++cnt;
-  if (7295-70 < cnt &&  cnt < 7295+70) {
-    Serial.printf("cas-io-write: c:%05d button: %d data: %d dos:%d\n", cnt, cas->button, Value, cas->dos);
-  }
-}
+LoadData load_params_;
 
 byte _9bits_to_byte(byte* buf) {
   byte res = 0;
@@ -77,7 +45,7 @@ void dos_rewind(DosBuf *db) {
 }
 
 void dos_reset(DosBuf *db) {
-//  memset(db->buf, 0, sizeof db->buf);
+  memset(db->buf, 0, sizeof db->buf);
   db->len = 0;
   db->p = 0;
 }
@@ -289,7 +257,9 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
   char filename[16+1];
   byte cmd = dos_get_command(db);
   int res = 0;
-  Serial.printf("dos_exec command: %d cas:%p l:%d df:%d\n", cmd, cas, db->len, db->p);
+
+  printf("dos_exec command: %d cas:%p l:%ld df:%d\n", cmd, cas, db->len, db->p);
+
   switch (cmd) {
   case DOSCMD_VIEW:
     dos_reset(db);
