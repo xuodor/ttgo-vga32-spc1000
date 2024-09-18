@@ -13,7 +13,7 @@ void vdgTask(void *params) {
   MC6847 *vdg = (MC6847 *)params;
   while (true) {
     vdg->RefreshScreen();
-    vTaskDelay(256/portTICK_PERIOD_MS);
+    vTaskDelay(16/portTICK_PERIOD_MS);
   }
 }
 
@@ -29,7 +29,7 @@ void setup() {
   Serial.begin(115200);
   spc.Init();
 
-  xTaskCreatePinnedToCore(vdgTask, "VDG", 4*1024, spc.vdg(), 2, &vdgTaskHandle, 0);
+  xTaskCreatePinnedToCore(vdgTask, "VDG", 1024, spc.vdg(), 2, &vdgTaskHandle, 0);
   configASSERT(vdgTaskHandle);
 /*
   if (!fabgl::FileBrowser::mountSDCard(FORMAT_ON_FAIL, SDCARD_MOUNT_PATH)) {
@@ -43,7 +43,7 @@ void setup() {
     return;
   }
 */
-  xTaskCreatePinnedToCore(cpuTask, "CPU", 32*1024, &spc, 2, &cpuTaskHandle, 1);
+  xTaskCreatePinnedToCore(cpuTask, "CPU", 2*1024, &spc, 2, &cpuTaskHandle, 1);
   configASSERT(cpuTaskHandle);
 }
 

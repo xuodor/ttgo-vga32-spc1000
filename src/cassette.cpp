@@ -26,8 +26,8 @@ void ResetCassette(Cassette *cas) {
  * @param cas cassette structure
  */
 void InitCassette(Cassette *cas) {
+  dosbuf_ = (DosBuf *)malloc(sizeof(DosBuf));
   cas->button = CAS_STOP;
-
   cas->wfp = NULL;
   cas->rfp = NULL;
   ResetCassette(cas);
@@ -100,11 +100,11 @@ void CasWrite(Cassette *cas, int val) {
   if (!cas->wrVal & val) // rising edge
     cas->wrRisingT = curTime;
   if (cas->wrVal & !val) { // falling edge
-    byte b = (curTime - cas->wrRisingT) < 32 ? '0' : '1';
+    int b = (curTime - cas->wrRisingT) < 32 ? 0 : 1;
     if (cas->wfp != NULL) {
-      fputc(b, cas->wfp);
+      fputc(b ? '1' : '0', cas->wfp);
     } else if (cas->dos) {
-      dos_putc(dosbuf_, b);
+      dos_putb(dosbuf_, b);
     }
   }
 

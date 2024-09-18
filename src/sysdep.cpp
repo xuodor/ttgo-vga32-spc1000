@@ -11,7 +11,7 @@ void init_fs() {
 }
 
 FILE *ext_fopen(const char *pathname, const char *mode) {
-  return file_browser_->openFile(pathname, mode);
+  return NULL;
 }
 
 uint32_t get_timestamp_ms() {
