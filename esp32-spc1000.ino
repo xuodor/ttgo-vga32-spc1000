@@ -22,29 +22,19 @@ void cpuTask(void *params) {
   spc->Run();
 }
 
-#define FORMAT_ON_FAIL     false
-#define SDCARD_MOUNT_PATH  "/SD"
-
 void setup() {
   Serial.begin(115200);
   spc.Init();
 
   xTaskCreatePinnedToCore(vdgTask, "VDG", 1024, spc.vdg(), 2, &vdgTaskHandle, 0);
   configASSERT(vdgTaskHandle);
-/*
-  if (!fabgl::FileBrowser::mountSDCard(FORMAT_ON_FAIL, SDCARD_MOUNT_PATH)) {
-    Serial.printf("Mounting sd failed.");
-    return;
-  }
 
-  file_browser_ = new fabgl::FileBrowser();
-  if (!file_browser_->setDirectory(DIR_PATH)) {
-    Serial.printf("Setting disk directory failed.");
-    return;
-  }
-*/
-  xTaskCreatePinnedToCore(cpuTask, "CPU", 2*1024, &spc, 2, &cpuTaskHandle, 1);
+  xTaskCreatePinnedToCore(cpuTask, "CPU", 8*1024, &spc, 2, &cpuTaskHandle, 1);
   configASSERT(cpuTaskHandle);
+
+  if (!fabgl::FileBrowser::mountSDCard(false, "/SD")) {
+    Serial.printf("Mounting sd failed.");
+  }
 }
 
 void loop() {

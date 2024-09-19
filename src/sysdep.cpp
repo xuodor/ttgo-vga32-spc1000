@@ -5,13 +5,13 @@
 
 int currentPage;
 byte *vram_;
-extern fabgl::FileBrowser *file_browser_;
 
 void init_fs() {
 }
 
 FILE *ext_fopen(const char *pathname, const char *mode) {
-  return NULL;
+  fabgl::FileBrowser fb(SD_MOUNT_PATH);
+  return fb.openFile(pathname, mode);
 }
 
 uint32_t get_timestamp_ms() {

@@ -300,13 +300,7 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
   case DOSCMD_SAVE:
     osd_set_filename_(db->buf, filename);
     if (filename[0] == '\0') strcpy(filename, "NONAME.TAP");
-    if (access(filename, F_OK) == 0) {
-      /* TODO: Prevent overwrite. For now we always allow it */
-    }
-    if (dos_max_reached()) {
-      /* Just a warning. */
-      /* osd_toast("MAX FILES REACHED", 0, 0); */
-    }
+    Serial.printf("fname:%s\n", filename);
     dos_reset(db);
     if ((cas->wfp = ext_fopen(filename, "wb")) == NULL) {
       osd_toast("SAVE ERROR", 0, 0);

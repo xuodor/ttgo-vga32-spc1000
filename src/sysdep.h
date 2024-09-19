@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#define DIR_PATH "/sdcard"
+#define SD_MOUNT_PATH "/SD"
 
 extern int screenMode;
 extern byte *cgbuf_;

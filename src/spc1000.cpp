@@ -7,6 +7,7 @@
 #define I_PERIOD 4000
 #define INTR_PERIOD 16.666
 #define KBD_PERIOD 50
+#define SDCARD_MOUNT_PATH  "/SD"
 
 extern uint8_t mem[];
 
@@ -215,6 +216,11 @@ void SPC1000::WriteIO(int addr, int data) {
     ay38910_.Write(data);
   } else if ((addr & 0xe000) == 0x6000) {
     CasIOWrite(&cas, data);
+  }
+  if (addr == 0x7000) {
+    FILE *fp  = fabgl::FileBrowser("/SD").openFile("A.TAP", "rb");
+    Serial.printf("fp:%p\n", fp);
+    if (!fp) fclose(fp);
   }
 }
 
