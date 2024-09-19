@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include "fabutils.h"
 #include "common.h"
 #include "glob.h"
 
@@ -16,7 +17,7 @@ extern byte *cgbuf_;
 extern int currentPage;
 extern byte *vram_;
 
-void init_fs();
+fabgl::FileBrowser *fs();
 FILE *ext_fopen(const char *pathname, const char *mode);
 uint32_t get_timestamp_ms();
 int can_display_char();

@@ -1,7 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "src/spc1000.h"
-
-#define DIR_PATH "/SD"
+#include "src/sysdep.h"
 
 SPC1000 spc;
 fabgl::FileBrowser *file_browser_;
@@ -29,10 +28,9 @@ void setup() {
   xTaskCreatePinnedToCore(vdgTask, "VDG", 1024, spc.vdg(), 2, &vdgTaskHandle, 0);
   configASSERT(vdgTaskHandle);
 
-  xTaskCreatePinnedToCore(cpuTask, "CPU", 8*1024, &spc, 2, &cpuTaskHandle, 1);
+  xTaskCreatePinnedToCore(cpuTask, "CPU", 4*1024, &spc, 2, &cpuTaskHandle, 1);
   configASSERT(cpuTaskHandle);
-
-  if (!fabgl::FileBrowser::mountSDCard(false, "/SD")) {
+  if (!fabgl::FileBrowser::mountSDCard(false, SD_MOUNT_PATH)) {
     Serial.printf("Mounting sd failed.");
   }
 }

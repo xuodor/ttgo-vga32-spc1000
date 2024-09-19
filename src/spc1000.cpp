@@ -50,9 +50,7 @@ SPC1000::~SPC1000() {}
 void SPC1000::Init() {
   InitMem();
 
-  init_fs();
   InitCassette(&cas);
-//  Serial.printf("dosbuf: %p\n", dosbuf_);
   cas.motor = 0;
   cas.pulse = 0;
   mc6847_.Init(io_);
@@ -218,9 +216,14 @@ void SPC1000::WriteIO(int addr, int data) {
     CasIOWrite(&cas, data);
   }
   if (addr == 0x7000) {
-    FILE *fp  = fabgl::FileBrowser("/SD").openFile("A.TAP", "rb");
-    Serial.printf("fp:%p\n", fp);
-    if (!fp) fclose(fp);
+    Serial.printf("fcount:%d\n", fs()->count());
+    for(int i = 0, k = 0; i < fs()->count(); ++i) {
+      char const *name = fs()->get(i)->name;
+      size_t l = strlen(name);
+      if (l > 4 && strcmp(name+l-4, ".TAP") == 0) {
+        Serial.printf("file:%s\n", name);
+      }
+    }
   }
 }
 
@@ -258,7 +261,6 @@ void SPC1000::Run() {
   int intr_count = 0;
   int64_t base_ts = esp_timer_get_time();
 
-  // while (c--) {
   while (true) {
     sum_cycles += (pre_i - cpu_.ICount);
 
@@ -327,28 +329,22 @@ void SPC1000::PollKeyboard() {
 void SPC1000::ProcessEmulatorKey(VirtualKeyItem *item) {
   if (item->vk == fabgl::VK_F8) {
     // PLAY
-    if (!FileBrowser::mountSDCard(false, "/SD")) {
-      // TODO: show 'NO SDCARD FOUND'
-      return;
-    }
-/*
-    if (cas.rfp != NULL)
+    if (cas.rfp)
       FCLOSE(cas.rfp);
-    if (cas.wfp != NULL)
+    if (cas.wfp)
       FCLOSE(cas.wfp);
-*/
-    // TODO: FIX THIS - if (OpenTapeFile() < 0) break;
+
     cas.button = CAS_PLAY;
     cas.motor = 1;
     cas.startTime = cas_start_time();
     ResetCassette(&cas);
   } else if (item->vk == fabgl::VK_F9) {
     // REC
-    if (cas.rfp != NULL)
+    if (cas.rfp)
       FCLOSE(cas.rfp);
-    if (cas.wfp != NULL)
+    if (cas.wfp)
       FCLOSE(cas.wfp);
-    // TODO: FIX THIS - if (SaveAsTapeFile() < 0) break;
+
     cas.button = CAS_REC;
     cas.motor = 1;
     ResetCassette(&cas);
@@ -356,9 +352,9 @@ void SPC1000::ProcessEmulatorKey(VirtualKeyItem *item) {
     // STOP
     cas.button = CAS_STOP;
     cas.motor = 0;
-    if (cas.rfp != NULL)
+    if (cas.rfp)
       FCLOSE(cas.rfp);
-    if (cas.wfp != NULL)
+    if (cas.wfp)
       FCLOSE(cas.wfp);
   }
 }
