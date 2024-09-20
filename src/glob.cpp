@@ -1,6 +1,7 @@
 #include "glob.h"
 //#include "freertos/FreeRTOS.h"
 #include "sysdep.h"
+#include <fnmatch.h>
 
 int glob(const char *pattern, int flags,
          int (*errfunc) (const char *epath, int eerrno),
@@ -12,7 +13,7 @@ int glob(const char *pattern, int flags,
   for (int i = 0; i < c; ++i) {
     char const *name = fs()->get(i)->name;
     size_t l = strlen(name);
-    if (l > 4 && strcmp(name+l-4, ".TAP") == 0) {
+    if (!fnmatch(pattern, name, 0)) {
         pglob->gl_pathv[tapfiles++] = (char *)name;
     }
   }
