@@ -3,6 +3,7 @@
 #include "dos.h"
 #include "fabutils.h"
 #include "sysdep.h"
+#include "osd.h"
 
 #define I_PERIOD 4000
 #define INTR_PERIOD 16.666
@@ -39,8 +40,8 @@ uint32_t cas_start_time() {
   return spc.cas_start_time();
 }
 
-int can_display_char() {
-  return spc.vdg()->screen_mode() == 0;
+MC6847 *vdg() {
+  return spc.vdg();
 }
 }  // extern "C"
 
@@ -54,6 +55,7 @@ void SPC1000::Init() {
   cas.motor = 0;
   cas.pulse = 0;
   mc6847_.Init(io_);
+  osd_init();
   ay38910_.Init(&sound_generator_);
   keyboard_.begin(PS2Preset::KeyboardPort0);
 
@@ -315,10 +317,12 @@ void SPC1000::PollKeyboard() {
     if (kbd->getNextVirtualKey(&item)) {
       KeyMat km = key_table_[static_cast<int>(item.vk)];
       if (km.addr >= 0) {
-        if (item.down)
+        if (item.down) {
           key_matrix_[km.addr] &= ~km.mask;
-        else
+          if (osd_dialog_on()) osd_process_key(item.vk);
+        } else {
           key_matrix_[km.addr] |= km.mask;
+        }
       } else {
         ProcessEmulatorKey(&item);
       }

@@ -20,7 +20,6 @@ extern byte *vram_;
 fabgl::FileBrowser *fs();
 FILE *ext_fopen(const char *pathname, const char *mode);
 uint32_t get_timestamp_ms();
-int can_display_char();
 uint32_t cas_start_time();
 int serial_printf(const char *s);
 #ifdef __cplusplus

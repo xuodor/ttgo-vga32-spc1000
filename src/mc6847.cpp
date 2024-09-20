@@ -21,6 +21,8 @@ void MC6847::Init(uint8_t *iomem) {
   memset(iomem_, 0, 0x2000);
   font_internal_ = &mem[0x524a]; //mc6847_font;
 
+  page_buf_ = (uint8_t *)malloc(PAGE_SIZE);
+
   setPaletteItem(0, RGB888(0, 0, 0));
   setPaletteItem(1, RGB888(255, 0, 0));
   setPaletteItem(2, RGB888(0, 255, 0));
@@ -38,7 +40,7 @@ void MC6847::RefreshScreen() {
   int page_base;
   int attr_base;
 
-  page_base = current_page_ * 0x200;
+  page_base = page_ * 0x200;
   attr_base = page_base + 0x800;
 
   for (int sy = 48; sy < 480-48; sy += 2) {
@@ -69,4 +71,20 @@ void MC6847::RefreshScreen() {
       directSetPixel(sx+1, sy, color);
     }
   }
+}
+
+byte *MC6847::text_pos(int x, int y) {
+  return iomem_ + page_*PAGE_SIZE + y*32 + x;
+}
+
+void MC6847::SavePage() {
+  byte *page_addr = iomem_ + page_ * 0x200;
+  memcpy(page_buf_, page_addr, PAGE_SIZE);
+  memcpy(page_buf_ + PAGE_SIZE, page_addr + 0x800, PAGE_SIZE);
+}
+
+void MC6847::RestorePage() {
+  byte *page_addr = iomem_ + page_ * 0x200;
+  memcpy(page_addr, page_buf_, PAGE_SIZE);
+  memcpy(page_addr + 0x800, page_buf_ + PAGE_SIZE, PAGE_SIZE);
 }

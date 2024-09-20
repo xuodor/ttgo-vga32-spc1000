@@ -7,11 +7,12 @@
 #include "sysdep.h"
 #include "MC6847.h"
 
+#include "mc6847.h"
+
 #define MAXFL 8
 
 int osd_visible_;
 int64_t osd_toast_begin_ms_;
-byte *osd_;
 int osd_dialog_;
 
 glob_t globbuf_;
@@ -23,48 +24,29 @@ int osd_dlg_max_ = 8; /* max visible lines */
 char *osd_dlg_sel_str_;
 osd_dlg_callback osd_dlg_cb_;
 
+extern "C" {
+MC6847 *vdg();
+}
+
 /*
  * OSD superimposed on MC6847.
  */
 
 void osd_init() {
-  osd_ = (byte *)malloc(0x2000);
   osd_dlg_sel_str_ = (char *)malloc(256);
   osd_toast_begin_ms_ = -1;
   osd_visible_ = 0;
   osd_dialog_ = 0;
 }
 
-byte osd_data(int addr) {
-  return osd_visible_ ? osd_[addr] : 0;
-}
-
-byte *osd_font_data(byte ascii, byte attr) {
-  int offset;
-  if (ascii < 32 && !(attr & 0x08))
-    ascii = 32;
-  if ((attr & 0x08) && (ascii < 96))
-    ascii += 128;
-
-  if (96 <= ascii && ascii < 128)
-    offset = (ascii+64)*12;
-  else if (128 <= ascii && ascii < 224)
-    offset = (ascii-64)*12;
-  else
-    offset = (ascii-32)*12;
-  return cgbuf_ + offset;
-}
-
 void osd_print(int x, int y, char *str, int inverse) {
-  int offset = currentPage * 0x200 + y * 32 + x;
-
-  byte *dst = osd_ + offset;
+  byte *p = vdg()->text_pos(x, y);
   while (*str) {
-    *dst = *str;
-    if (inverse) dst[0x800] |= 0x01;
-    else dst[0x800] &= ~0x01;
+    *p = *str;
+    if (inverse) p[0x800] |= 0x01;
+    else p[0x800] &= ~0x01;
     str++;
-    dst++;
+    p++;
   }
 }
 
@@ -91,8 +73,6 @@ void osd_toast(char *str, int vloc, int inverse) {
   int len;
 
   if (osd_is_toast_on()) return;
-
-  memset(osd_, 0, 0x2000);
 
   len = strlen(str);
   if (len > 30) str[31] = 0;
@@ -128,7 +108,6 @@ void osd_toast(char *str, int vloc, int inverse) {
 }
 
 void osd_exit() {
-  free(osd_);
   free(osd_dlg_sel_str_);
 }
 
@@ -164,7 +143,6 @@ void osd_open_dialog(char *title, char *globp, osd_dlg_callback cb) {
     return;
   }
   osd_dlg_cb_ = cb;
-  memcpy(osd_, vram_, 0x2000);
   osd_show(1);
   char tline[128] = "\x87\x8b\x8b\x8b\x8b\x8b\x8b\x8b\x8b\x8b\x8b\x85";
   int tpos = (strlen(tline)-strlen(title))/2;
@@ -206,8 +184,8 @@ void osd_close_dialog() {
 }
 
 void osd_process_key(KeyCode key) {
-  if (key == VK_ESCAPE || key == VK_RETURN) {
-    if (key == VK_RETURN) {
+  if (key == VKEY_ESCAPE || key == VKEY_RETURN) {
+    if (key == VKEY_RETURN) {
       strcpy(osd_dlg_sel_str_, globbuf_.gl_pathv[osd_dlg_sel_]);
     } else {
       *osd_dlg_sel_str_ = '\0';
@@ -216,14 +194,14 @@ void osd_process_key(KeyCode key) {
 
     osd_dlg_cb_(osd_dlg_sel_str_, NULL);
 
-  } else if (key == VK_UP) {
+  } else if (key == VKEY_UP) {
     if (osd_dlg_sel_ == 0) return;
     --osd_dlg_sel_;
     if (osd_dlg_sel_ < osd_dlg_top_) {
       osd_dlg_top_ = MAX(osd_dlg_top_-osd_dlg_max_/2, 0);
     }
     _osd_dlg_update();
-  } else if (key == VK_DOWN) {
+  } else if (key == VKEY_DOWN) {
     if (osd_dlg_sel_ == osd_dlg_cnt_-1) return;
     ++osd_dlg_sel_;
     if (osd_dlg_sel_ > osd_dlg_top_ + osd_dlg_max_-1) {
@@ -234,9 +212,14 @@ void osd_process_key(KeyCode key) {
 }
 
 void osd_show(int show) {
-  if (show == osd_visible_ || (show && !can_display_char())) return;
+  if (show == osd_visible_) return;
 
-  if (!show) osd_toast_begin_ms_ = -1;
+  if (show) {
+    vdg()->SavePage();
+  } else {
+    vdg()->RestorePage();
+    osd_toast_begin_ms_ = -1;
+  }
   osd_visible_ = show;
   UpdateMC6847Text(MC6847_UPDATEALL);
 }
