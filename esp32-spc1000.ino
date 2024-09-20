@@ -3,7 +3,6 @@
 #include "src/sysdep.h"
 
 SPC1000 spc;
-fabgl::FileBrowser *file_browser_;
 
 TaskHandle_t vdgTaskHandle;
 TaskHandle_t cpuTaskHandle;
@@ -30,9 +29,8 @@ void setup() {
 
   xTaskCreatePinnedToCore(cpuTask, "CPU", 4*1024, &spc, 2, &cpuTaskHandle, 1);
   configASSERT(cpuTaskHandle);
-  if (!fabgl::FileBrowser::mountSDCard(false, SD_MOUNT_PATH)) {
-    Serial.printf("Mounting sd failed.");
-  }
+
+  init_fs();
 }
 
 void loop() {

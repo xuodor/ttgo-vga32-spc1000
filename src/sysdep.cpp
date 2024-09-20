@@ -3,17 +3,17 @@
 #include "sysdep.h"
 #include "fabutils.h"
 
-int currentPage;
-byte *vram_;
-
 static fabgl::FileBrowser *fs_;
+
 void init_fs() {
+  if (!fabgl::FileBrowser::mountSDCard(false, SD_MOUNT_PATH)) {
+    Serial.printf("Mounting sd failed.");
+  }
 }
 
 fabgl::FileBrowser *fs() {
   if (!fs_) {
-    fs_ = new fabgl::FileBrowser();
-    fs_->setDirectory(SD_MOUNT_PATH);
+    fs_ = new fabgl::FileBrowser(SD_MOUNT_PATH);
   }
   return fs_;
 }

@@ -8,7 +8,6 @@
 #define I_PERIOD 4000
 #define INTR_PERIOD 16.666
 #define KBD_PERIOD 50
-#define SDCARD_MOUNT_PATH  "/SD"
 
 extern uint8_t mem[];
 
