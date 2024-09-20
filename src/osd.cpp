@@ -192,7 +192,7 @@ void osd_process_key(KeyCode key) {
     }
     osd_close_dialog();
 
-    osd_dlg_cb_(osd_dlg_sel_str_, NULL);
+    osd_dlg_cb_(osd_dlg_sel_str_, "CANCELED");
 
   } else if (key == VKEY_UP) {
     if (osd_dlg_sel_ == 0) return;
