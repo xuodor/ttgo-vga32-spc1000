@@ -215,8 +215,9 @@ void SPC1000::WriteIO(int addr, int data) {
     ay38910_.Write(data);
   } else if ((addr & 0xe000) == 0x6000) {
     CasIOWrite(&cas, data);
-  }
-  if (addr == 0x7000) {
+  } else if ((addr & 0xe000) == 0x2000) {
+    mc6847_.SetMode((data & 0x08) ? GM_GRAPHIC : GM_TEXT, data);
+  } else if (addr == 0x7000) {
     Serial.printf("fcount:%d\n", fs()->count());
     for(int i = 0, k = 0; i < fs()->count(); ++i) {
       char const *name = fs()->get(i)->name;

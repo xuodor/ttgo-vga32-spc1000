@@ -55,7 +55,7 @@ private:
   MC6847 mc6847_;
   AY38910 ay38910_;
 
-  uint8_t gmode;
+  uint8_t gmode_;
   int iplk_;
 
   int32_t tick;
