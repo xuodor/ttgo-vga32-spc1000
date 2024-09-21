@@ -1,5 +1,6 @@
-
 #include "mc6847.h"
+
+#pragma GCC optimize ("Ofast")
 
 //extern uint8_t mc6847_font[];
 extern uint8_t mem[];
@@ -7,7 +8,27 @@ extern uint8_t mem[];
 constexpr int kOffsetX_ = 64;
 constexpr int kOffsetY_ = 48;
 
-#pragma GCC optimize ("Ofast")
+#define CM_OLDREV   0
+#define CM_NEW1     1
+#define CM_NEW2     2
+#define CM_GREEN    3
+
+enum PaletteIndex {
+  PAL_BLACK = 0,
+  PAL_GREEN = 1,
+  PAL_YELLOW = 2,
+  PAL_BLUE = 3,
+  PAL_RED = 4,
+  PAL_BUFF = 5,
+  PAL_CYAN = 6,
+  PAL_ORANGE = 7,
+
+  // Magenta replaced with orange to support ORANGE in text mode
+  PAL_MAGENTA = 8,
+  PAL_CYANBLUE = 9,
+  PAL_LGREEN = 10,
+  PAL_DGREEN = 11
+};
 
 MC6847::MC6847() : fabgl::VGA8Controller() {
 }
@@ -108,10 +129,14 @@ void MC6847::SetMode(int command, byte param) {
       break;
     }
     if (mode_ != prev_mode) {
+      if (mode_ == 5) {
+          setPaletteItem(1, rgb_[PAL_LGREEN]);
+      } else {
+          setPaletteItem(1, rgb_[PAL_GREEN]);
+      }
       // UpdateGr
     }
   }
-  Serial.printf("mode:%d\n", mode_);
 }
 
 void MC6847::RefreshScreen() {
@@ -229,98 +254,93 @@ void MC6847::RestorePage() {
 
 void MC6847::InitColor(int colorMode) {
   if (colorMode == CM_GREEN) {
-    colorMap[COLOR_BLACK] = RGB888(0, 0, 0);
-    colorMap[COLOR_GREEN] = RGB888(0, 255, 0);
-    colorMap[COLOR_YELLOW] = RGB888(32, 255, 32);
-    colorMap[COLOR_BLUE] = RGB888(0, 32, 0);
-    colorMap[COLOR_RED] = RGB888(0, 100, 0);
-    colorMap[COLOR_BUFF] = RGB888(0, 24, 0);
-    colorMap[COLOR_CYAN] = RGB888(0, 224, 0);
-    colorMap[COLOR_MAGENTA] = RGB888(0, 128, 0);
-    colorMap[COLOR_ORANGE] = RGB888(0, 224, 0);
-    colorMap[COLOR_CYANBLUE] = RGB888(0, 200, 0); // CYAN/BLUE?
-    colorMap[COLOR_LGREEN] = RGB888(32, 255, 32);
-    colorMap[COLOR_DGREEN] = RGB888(0, 192, 0); // for screen 2
+    rgb_[PAL_BLACK] = RGB888(0, 0, 0);
+    rgb_[PAL_GREEN] = RGB888(0, 255, 0);
+    rgb_[PAL_YELLOW] = RGB888(32, 255, 32);
+    rgb_[PAL_BLUE] = RGB888(0, 32, 0);
+    rgb_[PAL_RED] = RGB888(0, 100, 0);
+    rgb_[PAL_BUFF] = RGB888(0, 24, 0);
+    rgb_[PAL_CYAN] = RGB888(0, 224, 0);
+    rgb_[PAL_MAGENTA] = RGB888(0, 128, 0);
+    rgb_[PAL_ORANGE] = RGB888(0, 224, 0);
+    rgb_[PAL_CYANBLUE] = RGB888(0, 200, 0); // CYAN/BLUE?
+    rgb_[PAL_LGREEN] = RGB888(32, 255, 32);
+    rgb_[PAL_DGREEN] = RGB888(0, 192, 0); // for screen 2
   } else {
-    colorMap[COLOR_BLACK] = RGB888(0, 0, 0);
-    colorMap[COLOR_GREEN] = RGB888(0, 255, 0);
-    colorMap[COLOR_YELLOW] = RGB888(255, 255, 192);
-    colorMap[COLOR_BLUE] = RGB888(0, 0, 255);
-    colorMap[COLOR_RED] = RGB888(255, 0, 0);
-    colorMap[COLOR_BUFF] = RGB888(96, 0, 0);
-    colorMap[COLOR_CYAN] = RGB888(0, 255, 255);
-    colorMap[COLOR_MAGENTA] = RGB888(255, 0, 255);
-    colorMap[COLOR_ORANGE] = RGB888(255, 128, 0);
-    colorMap[COLOR_CYANBLUE] = RGB888(0, 128, 255); // CYAN/BLUE?
-    colorMap[COLOR_LGREEN] = RGB888(64, 255, 64);
-    colorMap[COLOR_DGREEN] = RGB888(0, 192, 0);
+    rgb_[PAL_BLACK] = RGB888(0, 0, 0);
+    rgb_[PAL_GREEN] = RGB888(0, 255, 0);
+    rgb_[PAL_YELLOW] = RGB888(255, 255, 192);
+    rgb_[PAL_BLUE] = RGB888(0, 0, 255);
+    rgb_[PAL_RED] = RGB888(255, 0, 0);
+    rgb_[PAL_BUFF] = RGB888(96, 0, 0);
+    rgb_[PAL_CYAN] = RGB888(0, 255, 255);
+    rgb_[PAL_MAGENTA] = RGB888(255, 0, 255);
+    rgb_[PAL_ORANGE] = RGB888(255, 128, 0);
+    rgb_[PAL_CYANBLUE] = RGB888(0, 128, 255); // CYAN/BLUE?
+    rgb_[PAL_LGREEN] = RGB888(64, 255, 64);
+    rgb_[PAL_DGREEN] = RGB888(0, 192, 0);
   }
-  setPaletteItem(COLOR_BLACK, colorMap[COLOR_BLACK]);
-  setPaletteItem(COLOR_GREEN, colorMap[COLOR_GREEN]);
-  setPaletteItem(COLOR_YELLOW, colorMap[COLOR_YELLOW]);
-  setPaletteItem(COLOR_BLUE, colorMap[COLOR_BLUE]);
-  setPaletteItem(COLOR_RED, colorMap[COLOR_RED]);
-  setPaletteItem(COLOR_BUFF, colorMap[COLOR_BUFF]);
-  setPaletteItem(COLOR_CYAN, colorMap[COLOR_CYAN]);
-  setPaletteItem(COLOR_MAGENTA, colorMap[COLOR_MAGENTA]);
-
-  // setPaletteItem(COLOR_ORANGE, colorMap[COLOR_ORANGE]);
-  // setPaletteItem(COLOR_CYANBLUE, colorMap[COLOR_CYANBLUE]);
-  // setPaletteItem(COLOR_LGREEN, colorMap[COLOR_LGREEN]);
-  // setPaletteItem(COLOR_DGREEN, colorMap[COLOR_DGREEN]);
+  setPaletteItem(0, rgb_[PAL_BLACK]);
+  setPaletteItem(1, rgb_[PAL_GREEN]);
+  setPaletteItem(2, rgb_[PAL_YELLOW]);
+  setPaletteItem(3, rgb_[PAL_BLUE]);
+  setPaletteItem(4, rgb_[PAL_RED]);
+  setPaletteItem(5, rgb_[PAL_BUFF]);
+  setPaletteItem(6, rgb_[PAL_CYAN]);
+  setPaletteItem(7, rgb_[PAL_ORANGE]);
 
   // Semi Graphic
-  semiColorTbl[0] = COLOR_BLACK;
-  semiColorTbl[1] = COLOR_GREEN;
-  semiColorTbl[2] = COLOR_YELLOW;
-  semiColorTbl[3] = COLOR_BLUE;
-  semiColorTbl[4] = COLOR_RED;
-  semiColorTbl[5] = COLOR_BUFF;
-  semiColorTbl[6] = COLOR_CYAN;
-  semiColorTbl[7] = COLOR_MAGENTA;
-  semiColorTbl[8] = COLOR_ORANGE;
+  semiColorTbl[0] = PAL_BLACK;
+  semiColorTbl[1] = PAL_GREEN;
+  semiColorTbl[2] = PAL_YELLOW;
+  semiColorTbl[3] = PAL_BLUE;
+  semiColorTbl[4] = PAL_RED;
+  semiColorTbl[5] = PAL_BUFF;
+  semiColorTbl[6] = PAL_CYAN;
+  semiColorTbl[7] = PAL_MAGENTA;
+  semiColorTbl[8] = PAL_ORANGE;
 
   // Text Mode
-  colorTbl[0][0] = COLOR_BLACK;
-  colorTbl[0][1] = COLOR_GREEN;
-  colorTbl[0][2] = COLOR_BUFF;
-  colorTbl[0][3] = COLOR_ORANGE;
+  colorTbl[0][0] = PAL_BLACK;
+  colorTbl[0][1] = PAL_GREEN;
+  colorTbl[0][2] = PAL_BUFF;
+  colorTbl[0][3] = PAL_ORANGE;
 
   // Screen 2
-  colorTbl[2][0] = COLOR_GREEN;
-  colorTbl[2][1] = COLOR_YELLOW;
-  colorTbl[2][2] = COLOR_BLUE;
-  colorTbl[2][3] = COLOR_RED;
+  colorTbl[2][0] = PAL_GREEN;
+  colorTbl[2][1] = PAL_YELLOW;
+  colorTbl[2][2] = PAL_BLUE;
+  colorTbl[2][3] = PAL_RED;
 
   // Screen 3
-  colorTbl[3][0] = COLOR_BLUE;
-  colorTbl[3][1] = COLOR_CYANBLUE;
-  colorTbl[3][2] = COLOR_MAGENTA;
-  colorTbl[3][3] = COLOR_ORANGE;
+  colorTbl[3][0] = PAL_BLUE;
+  colorTbl[3][1] = PAL_CYANBLUE;
+  colorTbl[3][2] = PAL_MAGENTA;
+  colorTbl[3][3] = PAL_ORANGE;
 
   // Screen 4
-  colorTbl[4][0] = COLOR_BLACK;
-  colorTbl[4][1] = COLOR_GREEN;
+  colorTbl[4][0] = PAL_BLACK;
+  colorTbl[4][1] = PAL_GREEN;
 
   // Screen 5
-  colorTbl[5][0] = COLOR_BLACK;
-  colorTbl[5][1] = COLOR_LGREEN;
+  colorTbl[5][0] = PAL_BLACK;
+  colorTbl[5][1] = PAL_GREEN; // Set to LGREEN at mode switch
 
   switch (colorMode) {
   case CM_OLDREV:
-    colorTbl[0][2] = COLOR_BLACK;
-    colorTbl[0][3] = COLOR_CYAN;
+    colorTbl[0][2] = PAL_BLACK;
+    colorTbl[0][3] = PAL_CYAN;
 
-    colorTbl[5][1] = COLOR_CYAN;
+    colorTbl[5][1] = PAL_CYAN;
     break;
   case CM_NEW1:
-    colorTbl[0][2] = COLOR_BLACK;
-    colorTbl[0][3] = COLOR_ORANGE;
+    colorTbl[0][2] = PAL_BLACK;
+    colorTbl[0][3] = PAL_ORANGE;
     break;
   case CM_NEW2:
     break;
   case CM_GREEN:
-    colorTbl[2][0] = COLOR_DGREEN;
+    setPaletteItem(0, rgb_[PAL_DGREEN]);
     break;
   }
 }
