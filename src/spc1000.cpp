@@ -112,7 +112,7 @@ void SPC1000::Init() {
   key_table_[fabgl::VK_b] = { 3, 0x10 };
   key_table_[fabgl::VK_D] = { 3, 0x20 };
   key_table_[fabgl::VK_d] = { 3, 0x20 };
-  key_table_[fabgl::VK_D] = { 3, 0x40 };
+  key_table_[fabgl::VK_E] = { 3, 0x40 };
   key_table_[fabgl::VK_e] = { 3, 0x40 };
   key_table_[fabgl::VK_HASH] = { 3, 0x80 };
   key_table_[fabgl::VK_3] = { 3, 0x80 };
@@ -134,7 +134,7 @@ void SPC1000::Init() {
   key_table_[fabgl::VK_m] = { 5, 0x10 };
   key_table_[fabgl::VK_G] = { 5, 0x20 };
   key_table_[fabgl::VK_g] = { 5, 0x20 };
-  key_table_[fabgl::VK_Y] = { 5, 0x40 };
+  key_table_[fabgl::VK_T] = { 5, 0x40 };
   key_table_[fabgl::VK_t] = { 5, 0x40 };
   key_table_[fabgl::VK_PERCENT] = { 5, 0x80 };
   key_table_[fabgl::VK_5] = { 5, 0x80 };
