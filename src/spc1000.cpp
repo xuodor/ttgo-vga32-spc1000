@@ -206,6 +206,17 @@ int SPC1000::ReadMem(int addr) {
 }
 
 void SPC1000::WriteIO(int addr, int data) {
+  if (addr == 0x7000) {
+    Serial.printf("fcount:%d\n", fs()->count());
+    for(int i = 0, k = 0; i < fs()->count(); ++i) {
+      char const *name = fs()->get(i)->name;
+      size_t l = strlen(name);
+      if (l > 4 && strcmp(name+l-4, ".TAP") == 0) {
+        Serial.printf("file:%s\n", name);
+      }
+    }
+    return;
+  }
   if (0x0000 <= addr && addr < 0x2000) {
     io_[addr] = data;
     return;
@@ -216,16 +227,7 @@ void SPC1000::WriteIO(int addr, int data) {
   } else if ((addr & 0xe000) == 0x6000) {
     CasIOWrite(&cas, data);
   } else if ((addr & 0xe000) == 0x2000) {
-    mc6847_.SetMode((data & 0x08) ? GM_GRAPHIC : GM_TEXT, data);
-  } else if (addr == 0x7000) {
-    Serial.printf("fcount:%d\n", fs()->count());
-    for(int i = 0, k = 0; i < fs()->count(); ++i) {
-      char const *name = fs()->get(i)->name;
-      size_t l = strlen(name);
-      if (l > 4 && strcmp(name+l-4, ".TAP") == 0) {
-        Serial.printf("file:%s\n", name);
-      }
-    }
+    mc6847_.SetMode((data & 0x08) == 0, data);
   }
 }
 

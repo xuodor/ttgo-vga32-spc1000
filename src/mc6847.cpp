@@ -12,6 +12,8 @@ constexpr int kOffsetY_ = 48;
 #define CM_NEW2     2
 #define CM_GREEN    3
 
+#define PAGE_SIZE 32*16
+
 enum PaletteIndex {
   PAL_BLACK = 0,
   PAL_GREEN = 1,
@@ -29,8 +31,7 @@ enum PaletteIndex {
   PAL_DGREEN = 11
 };
 
-MC6847::MC6847() : fabgl::VGA8Controller() {
-}
+MC6847::MC6847() : fabgl::VGA8Controller() {}
 
 void MC6847::Init(uint8_t *iomem) {
   begin();
@@ -41,6 +42,9 @@ void MC6847::Init(uint8_t *iomem) {
   font_internal_ = mc6847_font;
 
   page_buf_ = (uint8_t *)malloc(PAGE_SIZE);
+  semigr_font_0 = (byte *)malloc(16*12);
+  semigr_font_1 = (byte *)malloc(64*12);
+
   refresh_func_ = &MC6847::RefreshTextSemiGraphic;
 
   InitColor(CM_NEW1);
@@ -50,58 +54,40 @@ void MC6847::Init(uint8_t *iomem) {
     for (int j = 0; j < 12; j++) {
       unsigned char val = 0;
       if (j < 6) {
-        if (i & 0x08)
-          val |= 0xf0;
-        if (i & 0x04)
-          val |= 0x0f;
+        if (i & 0x08) val |= 0xf0;
+        if (i & 0x04) val |= 0x0f;
       } else {
-        if (i & 0x02)
-          val |= 0xf0;
-        if (i & 0x01)
-          val |= 0x0f;
+        if (i & 0x02) val |= 0xf0;
+        if (i & 0x01) val |= 0x0f;
       }
-      semiGrFont0[i * 12 + j] = val;
+      semigr_font_0[i * 12 + j] = val;
     }
   }
   for (int i = 0; i < 64; i++) {
     for (int j = 0; j < 12; j++) {
       unsigned char val = 0;
       if (j < 4) {
-        if (i & 0x20)
-          val |= 0xf0;
-        if (i & 0x10)
-          val |= 0x0f;
+        if (i & 0x20) val |= 0xf0;
+        if (i & 0x10) val |= 0x0f;
       } else if (j < 8) {
-        if (i & 0x08)
-          val |= 0xf0;
-        if (i & 0x04)
-          val |= 0x0f;
+        if (i & 0x08) val |= 0xf0;
+        if (i & 0x04) val |= 0x0f;
       } else {
-        if (i & 0x02)
-          val |= 0xf0;
-        if (i & 0x01)
-          val |= 0x0f;
+        if (i & 0x02) val |= 0xf0;
+        if (i & 0x01) val |= 0x0f;
       }
-      semiGrFont1[i * 12 + j] = val;
+      semigr_font_1[i * 12 + j] = val;
     }
   }
 }
 
-void MC6847::SetMode(int command, byte param) {
-  printf("mode cmd:%d param:%02x\n", command, param);
+void MC6847::SetMode(int text, byte param) {
   int prev_mode = mode_;
-  switch (command) {
-  case GM_TEXT:
+  if (text) {
     page_ = (param & 0x30) >> 4;
     mode_ = 0;
     refresh_func_ = &MC6847::RefreshTextSemiGraphic;
-    //UpdateRect
-    break;
-//  case GM_TEXT_PAGE:
-//    page_ = param;
-    // UpdateTExt
-//    break;
-  case GM_GRAPHIC:
+  } else {
     switch (param & 0x8e) {
     case 0x80: // 128x96, not implemented
     case 0x0a: // color
@@ -133,7 +119,6 @@ void MC6847::SetMode(int command, byte param) {
       } else {
           setPaletteItem(1, rgb_[PAL_GREEN]);
       }
-      // UpdateGr
     }
   }
 }
@@ -172,35 +157,35 @@ void MC6847::GetFontData(byte code, byte attr,
                          int *fgColor, int *bgColor, byte **fontData) {
   if (attr & 0x04) {
     // semigraphic
-    *bgColor = semiColorTbl[0];
+    *bgColor = semigr_tbl_[0];
     switch (attr & 0x08) {
     case 0:
-      *fgColor = semiColorTbl[((code & 0x70) >> 4) + 1];
-      *fontData = &semiGrFont0[(code & 0x0f) * 12];
+      *fgColor = semigr_tbl_[((code & 0x70) >> 4) + 1];
+      *fontData = &semigr_font_0[(code & 0x0f) * 12];
       break;
     case 0x08:
       *fgColor =
-          semiColorTbl[(((attr & 0x02) << 1) | ((code & 0xc0) >> 6)) + 1];
-      *fontData = &semiGrFont1[(code & 0x3f) * 12];
+          semigr_tbl_[(((attr & 0x02) << 1) | ((code & 0xc0) >> 6)) + 1];
+      *fontData = &semigr_font_1[(code & 0x3f) * 12];
       break;
     }
   } else {
     switch (attr & 0x03) {
     case 0x00:
-      *fgColor = colorTbl[0][1];
-      *bgColor = colorTbl[0][0];
+      *fgColor = color_tbl_[0][1];
+      *bgColor = color_tbl_[0][0];
       break;
     case 0x01:
-      *fgColor = colorTbl[0][0];
-      *bgColor = colorTbl[0][1];
+      *fgColor = color_tbl_[0][0];
+      *bgColor = color_tbl_[0][1];
       break;
     case 0x02:
-      *fgColor = colorTbl[0][3];
-      *bgColor = colorTbl[0][2];
+      *fgColor = color_tbl_[0][3];
+      *bgColor = color_tbl_[0][2];
       break;
     case 0x03:
-      *fgColor = colorTbl[0][2];
-      *bgColor = colorTbl[0][3];
+      *fgColor = color_tbl_[0][2];
+      *bgColor = color_tbl_[0][3];
       break;
     }
     if (code < 32 && !(attr & 0x08)) code = 32;
@@ -220,8 +205,8 @@ byte *MC6847::text_pos(int x, int y) {
 }
 
 void MC6847::RefreshHiGraphic() {
-  int fgColor = colorTbl[mode_][1];
-  int bgColor = colorTbl[mode_][0];
+  int fgColor = color_tbl_[mode_][1];
+  int bgColor = color_tbl_[mode_][0];
 
   for (int sy = 48; sy < 480-48; sy += 2) {
     for (int sx = 64; sx < 640-64; sx += 2) {
@@ -289,52 +274,52 @@ void MC6847::InitColor(int colorMode) {
   setPaletteItem(7, rgb_[PAL_ORANGE]);
 
   // Semi Graphic
-  semiColorTbl[0] = PAL_BLACK;
-  semiColorTbl[1] = PAL_GREEN;
-  semiColorTbl[2] = PAL_YELLOW;
-  semiColorTbl[3] = PAL_BLUE;
-  semiColorTbl[4] = PAL_RED;
-  semiColorTbl[5] = PAL_BUFF;
-  semiColorTbl[6] = PAL_CYAN;
-  semiColorTbl[7] = PAL_MAGENTA;
-  semiColorTbl[8] = PAL_ORANGE;
+  semigr_tbl_[0] = PAL_BLACK;
+  semigr_tbl_[1] = PAL_GREEN;
+  semigr_tbl_[2] = PAL_YELLOW;
+  semigr_tbl_[3] = PAL_BLUE;
+  semigr_tbl_[4] = PAL_RED;
+  semigr_tbl_[5] = PAL_BUFF;
+  semigr_tbl_[6] = PAL_CYAN;
+  semigr_tbl_[7] = PAL_MAGENTA;
+  semigr_tbl_[8] = PAL_ORANGE;
 
   // Text Mode
-  colorTbl[0][0] = PAL_BLACK;
-  colorTbl[0][1] = PAL_GREEN;
-  colorTbl[0][2] = PAL_BUFF;
-  colorTbl[0][3] = PAL_ORANGE;
+  color_tbl_[0][0] = PAL_BLACK;
+  color_tbl_[0][1] = PAL_GREEN;
+  color_tbl_[0][2] = PAL_BUFF;
+  color_tbl_[0][3] = PAL_ORANGE;
 
   // Screen 2
-  colorTbl[2][0] = PAL_GREEN;
-  colorTbl[2][1] = PAL_YELLOW;
-  colorTbl[2][2] = PAL_BLUE;
-  colorTbl[2][3] = PAL_RED;
+  color_tbl_[2][0] = PAL_GREEN;
+  color_tbl_[2][1] = PAL_YELLOW;
+  color_tbl_[2][2] = PAL_BLUE;
+  color_tbl_[2][3] = PAL_RED;
 
   // Screen 3
-  colorTbl[3][0] = PAL_BLUE;
-  colorTbl[3][1] = PAL_CYANBLUE;
-  colorTbl[3][2] = PAL_MAGENTA;
-  colorTbl[3][3] = PAL_ORANGE;
+  color_tbl_[3][0] = PAL_BLUE;
+  color_tbl_[3][1] = PAL_CYANBLUE;
+  color_tbl_[3][2] = PAL_MAGENTA;
+  color_tbl_[3][3] = PAL_ORANGE;
 
   // Screen 4
-  colorTbl[4][0] = PAL_BLACK;
-  colorTbl[4][1] = PAL_GREEN;
+  color_tbl_[4][0] = PAL_BLACK;
+  color_tbl_[4][1] = PAL_GREEN;
 
   // Screen 5
-  colorTbl[5][0] = PAL_BLACK;
-  colorTbl[5][1] = PAL_GREEN; // Set to LGREEN at mode switch
+  color_tbl_[5][0] = PAL_BLACK;
+  color_tbl_[5][1] = PAL_GREEN; // Set to LGREEN at mode switch
 
   switch (colorMode) {
   case CM_OLDREV:
-    colorTbl[0][2] = PAL_BLACK;
-    colorTbl[0][3] = PAL_CYAN;
+    color_tbl_[0][2] = PAL_BLACK;
+    color_tbl_[0][3] = PAL_CYAN;
 
-    colorTbl[5][1] = PAL_CYAN;
+    color_tbl_[5][1] = PAL_CYAN;
     break;
   case CM_NEW1:
-    colorTbl[0][2] = PAL_BLACK;
-    colorTbl[0][3] = PAL_ORANGE;
+    color_tbl_[0][2] = PAL_BLACK;
+    color_tbl_[0][3] = PAL_ORANGE;
     break;
   case CM_NEW2:
     break;

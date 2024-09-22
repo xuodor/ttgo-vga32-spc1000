@@ -4,10 +4,8 @@
 #include <string.h>
 
 #include "common.h"
-#include "sysdep.h"
-#include "MC6847.h"
-
 #include "mc6847.h"
+#include "sysdep.h"
 
 #define MAXFL 8
 
@@ -221,5 +219,4 @@ void osd_show(int show) {
     osd_toast_begin_ms_ = -1;
   }
   osd_visible_ = show;
-  UpdateMC6847Text(MC6847_UPDATEALL);
 }
