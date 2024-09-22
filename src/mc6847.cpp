@@ -43,8 +43,6 @@ void MC6847::Init(byte *iomem) {
   font_internal_ = mc6847_font;
 
   page_buf_ = (byte *)malloc(PAGE_SIZE);
-  semigr_font_0 = (byte *)malloc(16*12);
-  semigr_font_1 = (byte *)malloc(64*12);
 
   refresh_func_ = &MC6847::RefreshTextSemiGraphic;
 
