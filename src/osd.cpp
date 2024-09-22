@@ -56,7 +56,7 @@ int osd_should_close_toast() {
   if (!osd_is_toast_on()) return 0;
 
   int64_t t = get_timestamp_ms();
-  return t - osd_toast_begin_ms_ > 1500; /* 1.5 secs */
+  return t - osd_toast_begin_ms_ > 1000; /* 1 secs */
 }
 
 /**
