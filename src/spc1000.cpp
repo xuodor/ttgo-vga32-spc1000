@@ -10,7 +10,6 @@
 #define KBD_PERIOD 50
 
 extern uint8_t mem[];
-
 extern SPC1000 spc;
 
 extern "C" {
@@ -206,20 +205,8 @@ int SPC1000::ReadMem(int addr) {
 }
 
 void SPC1000::WriteIO(int addr, int data) {
-  if (addr == 0x7000) {
-    Serial.printf("fcount:%d\n", fs()->count());
-    for(int i = 0, k = 0; i < fs()->count(); ++i) {
-      char const *name = fs()->get(i)->name;
-      size_t l = strlen(name);
-      if (l > 4 && strcmp(name+l-4, ".TAP") == 0) {
-        Serial.printf("file:%s\n", name);
-      }
-    }
-    return;
-  }
   if (0x0000 <= addr && addr < 0x2000) {
     io_[addr] = data;
-    return;
   } else if (addr == 0x4000) {
     ay38910_.WrCtrl(data);
   } else if (addr == 0x4001) {
@@ -258,23 +245,13 @@ void SPC1000::Run() {
   simul.prevTick = simul.baseTick;
   tick = 0;
 
-#define NN 10000000
-  int c=NN;
-  int sum_cycles = 0;
-  int pre_i = I_PERIOD;
-  int intr_count = 0;
-  int64_t base_ts = esp_timer_get_time();
-
   while (true) {
-    sum_cycles += (pre_i - cpu_.ICount);
-
     if (cpu_.ICount <= 0) {
       tick++;
       cpu_.ICount += I_PERIOD;
       intrTime -= 1.0;
       if (intrTime < 0) {
         intrTime += INTR_PERIOD;
-        intr_count++;
         if (cpu_.IFF & IFF_EI) {
           cpu_.IFF |= IFF_IM1 | IFF_1;
           IntZ80(&cpu_, 0);
@@ -301,13 +278,8 @@ void SPC1000::Run() {
         simul.curTick = get_timestamp_ms() - simul.baseTick;
       }
     }
-    pre_i = cpu_.ICount;
-
     ExecZ80(&cpu_);
   }
-  int64_t ts = esp_timer_get_time() - base_ts; // us
-  Serial.printf("average: delta: %ld cycle: %f int-cout: %d\n", ts, sum_cycles/4.0, intr_count);
-  for(;;);
 }
 
 void SPC1000::PollKeyboard() {
