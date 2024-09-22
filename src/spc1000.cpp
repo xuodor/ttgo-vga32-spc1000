@@ -334,33 +334,25 @@ void SPC1000::PollKeyboard() {
 
 void SPC1000::ProcessEmulatorKey(VirtualKeyItem *item) {
   if (item->vk == fabgl::VK_F8) {
-    // PLAY
-    if (cas.rfp)
-      FCLOSE(cas.rfp);
-    if (cas.wfp)
-      FCLOSE(cas.wfp);
-
+    osd_toast("PLAY", 0, 0);
+    if (cas.rfp) FCLOSE(cas.rfp);
+    if (cas.wfp) FCLOSE(cas.wfp);
     cas.button = CAS_PLAY;
     cas.motor = 1;
     cas.startTime = cas_start_time();
     ResetCassette(&cas);
   } else if (item->vk == fabgl::VK_F9) {
-    // REC
-    if (cas.rfp)
-      FCLOSE(cas.rfp);
-    if (cas.wfp)
-      FCLOSE(cas.wfp);
-
+    osd_toast("RECORD", 0, 0);
+    if (cas.rfp) FCLOSE(cas.rfp);
+    if (cas.wfp) FCLOSE(cas.wfp);
     cas.button = CAS_REC;
     cas.motor = 1;
     ResetCassette(&cas);
   } else if (item->vk == fabgl::VK_F10) {
-    // STOP
+    osd_toast("STOP", 0, 0);
     cas.button = CAS_STOP;
     cas.motor = 0;
-    if (cas.rfp)
-      FCLOSE(cas.rfp);
-    if (cas.wfp)
-      FCLOSE(cas.wfp);
+    if (cas.rfp) FCLOSE(cas.rfp);
+    if (cas.wfp) FCLOSE(cas.wfp);
   }
 }
