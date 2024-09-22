@@ -24,6 +24,10 @@ FILE *ext_fopen(const char *pathname, const char *mode) {
 
 void ext_remove(const char *pathname) {
   fs()->remove(pathname);
+  reload_dir();
+}
+
+void reload_dir() {
   fs()->reload();
 }
 

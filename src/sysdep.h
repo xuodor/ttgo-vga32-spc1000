@@ -16,6 +16,7 @@ void init_fs();
 fabgl::FileBrowser *fs();
 FILE *ext_fopen(const char *pathname, const char *mode);
 void ext_remove(const char *pathname);
+void reload_dir();
 uint32_t get_timestamp_ms();
 uint32_t cas_start_time();
 #ifdef __cplusplus
