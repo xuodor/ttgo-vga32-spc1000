@@ -22,6 +22,10 @@ FILE *ext_fopen(const char *pathname, const char *mode) {
   return fs()->openFile(pathname, mode);
 }
 
+void ext_remove(const char *pathname) {
+  fs()->remove(pathname);
+}
+
 uint32_t get_timestamp_ms() {
   return esp_timer_get_time()/1000;
 }

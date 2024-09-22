@@ -264,8 +264,6 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
   byte cmd = dos_get_command(db);
   int res = 0;
 
-  Serial.printf("dos_exec command: %d cas:%p l:%d df:%d\n", cmd, cas, db->len, db->p);
-
   switch (cmd) {
   case DOSCMD_VIEW:
     dos_reset(db);
@@ -300,7 +298,7 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
   case DOSCMD_SAVE:
     osd_set_filename_(db->buf, filename);
     if (filename[0] == '\0') strcpy(filename, "NONAME.TAP");
-    Serial.printf("fname:%s\n", filename);
+    /* TODO: Prevent overwrite. For now we always allow it */
     dos_reset(db);
     if ((cas->wfp = ext_fopen(filename, "wb")) == NULL) {
       osd_toast("SAVE ERROR", 0, 0);
@@ -311,7 +309,7 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
   case DOSCMD_DEL:
     osd_set_filename_(db->buf, filename);
     dos_reset(db);
-    remove(filename);
+    ext_remove(filename);
     /* fall through */
   default:
     /* No cmd received. Emulate STOP button. */
