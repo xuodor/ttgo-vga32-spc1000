@@ -12,7 +12,7 @@
 
 typedef struct {
   int addr;
-  uint8_t mask;
+  byte mask;
 } KeyMat;
 
 
@@ -20,7 +20,7 @@ typedef struct {
  * Timestamps to keep emulation speed at 4MHz
  */
 typedef struct {
-  int32_t baseTick, curTick, prevTick;
+  int32_t base, cur, prev;
 } SPCSimul;
 
 class SPC1000 {
@@ -35,7 +35,7 @@ public:
   int ReadMem(int addr);
   void WriteIO(int addr, int value);
   int ReadIO(int addr);
-  uint32_t cas_start_time() { return tick*125 + ((4000-cpu_.ICount)>>5); }
+  uint32_t cas_start_time() { return tick_*125 + ((4000-cpu_.ICount)>>5); }
 
 private:
   int KeyIOMatrix(int index) { return key_matrix_[index]; }
@@ -43,11 +43,11 @@ private:
   void PollKeyboard();
   void ProcessEmulatorKey(VirtualKeyItem *item);
 
-  uint8_t *mem_;
-  uint8_t *io_;
+  byte *mem_;
+  byte *io_;
   KeyMat *key_table_;
-  uint8_t key_matrix_[10];
-  Cassette cas;
+  byte key_matrix_[10];
+  Cassette cas_;
   fabgl::PS2Controller keyboard_;
   fabgl::SoundGenerator sound_generator_;
 
@@ -55,14 +55,11 @@ private:
   MC6847 mc6847_;
   AY38910 ay38910_;
 
-  uint8_t gmode_;
+  byte gmode_;
   int iplk_;
 
-  int32_t tick;
-  int turbo;
-  int refrTimer;   // timer for screen refresh
-  int refrSet;     // init value for screen refresh timer
-  double intrTime; // variable for interrupt timing
-  int32_t kbd_timer;
-  SPCSimul simul;
+  int32_t tick_;
+  int turbo_;
+  int32_t kbd_timer_;
+  SPCSimul simul_;
 };

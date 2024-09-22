@@ -9,7 +9,7 @@
 #define INTR_PERIOD 16.666
 #define KBD_PERIOD 50
 
-extern uint8_t mem[];
+extern byte mem[];
 extern SPC1000 spc;
 
 extern "C" {
@@ -49,9 +49,9 @@ SPC1000::~SPC1000() {}
 void SPC1000::Init() {
   InitMem();
 
-  InitCassette(&cas);
-  cas.motor = 0;
-  cas.pulse = 0;
+  InitCassette(&cas_);
+  cas_.motor = 0;
+  cas_.pulse = 0;
   mc6847_.Init(io_);
   osd_init();
   ay38910_.Init(&sound_generator_);
@@ -59,10 +59,8 @@ void SPC1000::Init() {
 
   ResetZ80(&cpu_);
   cpu_.ICount = I_PERIOD;
-  kbd_timer = KBD_PERIOD;
-  tick = 0;
-  refrTimer = 0;
-  refrSet = 0;
+  kbd_timer_ = KBD_PERIOD;
+  tick_ = 0;
   iplk_ = 1;
 
   for (int i = fabgl::VK_NONE; i < fabgl::VK_LAST; ++i) {
@@ -196,7 +194,7 @@ void SPC1000::Init() {
 void SPC1000::InitMem() {
   mem_ = mem;
   memset(key_matrix_, 0xff, sizeof key_matrix_);
-  io_ = (uint8_t *)malloc(0x2000);
+  io_ = (byte *)malloc(0x2000);
   key_table_ = (KeyMat *)malloc(sizeof(KeyMat) * (size_t)fabgl::VK_LAST);
 }
 
@@ -212,7 +210,7 @@ void SPC1000::WriteIO(int addr, int data) {
   } else if (addr == 0x4001) {
     ay38910_.Write(data);
   } else if ((addr & 0xe000) == 0x6000) {
-    CasIOWrite(&cas, data);
+    CasIOWrite(&cas_, data);
   } else if ((addr & 0xe000) == 0x2000) {
     mc6847_.SetMode((data & 0x08) == 0, data);
   }
@@ -226,7 +224,7 @@ int SPC1000::ReadIO(int addr) {
   } else if ((addr & 0xfffe) == 0x4000) {
     if (addr & 0x01) {
       if (ay38910_.reg() == 14) {
-        return CasIORead(&cas);
+        return CasIORead(&cas_);
       } else {
         return ay38910_.RdData();
       }
@@ -241,13 +239,14 @@ int SPC1000::ReadIO(int addr) {
 void SPC1000::Run() {
   int turboState = 0;
   int prevTurboState = 0;
-  simul.baseTick = get_timestamp_ms();
-  simul.prevTick = simul.baseTick;
-  tick = 0;
+  double intrTime = INTR_PERIOD;
+  simul_.base = get_timestamp_ms();
+  simul_.prev = simul_.base;
+  tick_ = 0;
 
   while (true) {
     if (cpu_.ICount <= 0) {
-      tick++;
+      tick_++;
       cpu_.ICount += I_PERIOD;
       intrTime -= 1.0;
       if (intrTime < 0) {
@@ -260,22 +259,22 @@ void SPC1000::Run() {
 
       PollKeyboard();
 
-      simul.curTick = get_timestamp_ms() - simul.baseTick;
-      int32_t deltaMs = simul.curTick - simul.prevTick;
+      simul_.cur = get_timestamp_ms() - simul_.base;
+      int32_t deltaMs = simul_.cur - simul_.prev;
       if (deltaMs > 0) {
         ay38910_.Loop(deltaMs);
-        simul.prevTick = simul.curTick;
+        simul_.prev = simul_.cur;
       }
 
-      turboState = cas.motor || turbo;
-      if (prevTurboState && !turboState && simul.curTick < tick) {
-        tick = simul.curTick; // adjust timing if turbo state turned off
+      turboState = cas_.motor || turbo_;
+      if (prevTurboState && !turboState && simul_.cur < tick_) {
+        tick_ = simul_.cur; // adjust timing if turbo state turned off
       }
       prevTurboState = turboState;
 
-      while (!turboState && (simul.curTick < tick)) {
+      while (!turboState && (simul_.cur < tick_)) {
         vTaskDelay(1);
-        simul.curTick = get_timestamp_ms() - simul.baseTick;
+        simul_.cur = get_timestamp_ms() - simul_.base;
       }
     }
     ExecZ80(&cpu_);
@@ -283,8 +282,9 @@ void SPC1000::Run() {
 }
 
 void SPC1000::PollKeyboard() {
-  if (--kbd_timer > 0) return;
-  kbd_timer += KBD_PERIOD;
+  if (--kbd_timer_ > 0) return;
+
+  kbd_timer_ += KBD_PERIOD;
   auto kbd = fabgl::PS2Controller::keyboard();
   if (kbd->virtualKeyAvailable()) {
     VirtualKeyItem item;
@@ -307,24 +307,24 @@ void SPC1000::PollKeyboard() {
 void SPC1000::ProcessEmulatorKey(VirtualKeyItem *item) {
   if (item->vk == fabgl::VK_F8) {
     osd_toast("PLAY", 0, 0);
-    if (cas.rfp) FCLOSE(cas.rfp);
-    if (cas.wfp) FCLOSE(cas.wfp);
-    cas.button = CAS_PLAY;
-    cas.motor = 1;
-    cas.startTime = cas_start_time();
-    ResetCassette(&cas);
+    if (cas_.rfp) FCLOSE(cas_.rfp);
+    if (cas_.wfp) FCLOSE(cas_.wfp);
+    cas_.button = CAS_PLAY;
+    cas_.motor = 1;
+    cas_.startTime = cas_start_time();
+    ResetCassette(&cas_);
   } else if (item->vk == fabgl::VK_F9) {
     osd_toast("RECORD", 0, 0);
-    if (cas.rfp) FCLOSE(cas.rfp);
-    if (cas.wfp) FCLOSE(cas.wfp);
-    cas.button = CAS_REC;
-    cas.motor = 1;
-    ResetCassette(&cas);
+    if (cas_.rfp) FCLOSE(cas_.rfp);
+    if (cas_.wfp) FCLOSE(cas_.wfp);
+    cas_.button = CAS_REC;
+    cas_.motor = 1;
+    ResetCassette(&cas_);
   } else if (item->vk == fabgl::VK_F10) {
     osd_toast("STOP", 0, 0);
-    cas.button = CAS_STOP;
-    cas.motor = 0;
-    if (cas.rfp) FCLOSE(cas.rfp);
-    if (cas.wfp) FCLOSE(cas.wfp);
+    cas_.button = CAS_STOP;
+    cas_.motor = 0;
+    if (cas_.rfp) FCLOSE(cas_.rfp);
+    if (cas_.wfp) FCLOSE(cas_.wfp);
   }
 }

@@ -15,8 +15,6 @@
 #define FIB_TAP_SIZE 24679
 #define MAX_BODY_TAP (0x2af8+0x14+0x14+(1+256+2)*9+1)
 
-typedef unsigned long uint32;
-
 typedef struct {
   byte buf[(FIB_TAP_SIZE + MAX_BODY_TAP)/8+1];
   unsigned int len;
@@ -27,7 +25,7 @@ typedef struct {
 extern "C" {
 #endif
 
-int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time);
+int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time);
 void dos_putb(DosBuf *db, int b);
 void dos_rewind(DosBuf *db);
 void dos_reset(DosBuf *db);

@@ -260,7 +260,7 @@ void dos_load(char *filename, char *errmsg) {
  * Executes the received dos command.
  * @return 1 if a command was recognized and executed.
  */
-int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
+int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time) {
   char filename[16+1];
   byte cmd = dos_get_command(db);
   int res = 0;
@@ -286,8 +286,6 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
       } else {
         if (feof(cas->rfp)) {
           dos_build_load_resp(load_params_.dos_buf, "READ ERROR", "\0\0", 2);
-          // TODO: After this, force the stop button to not repeat this message
-          // upon subsequent LOAD command.
         }
         cas->button = CAS_PLAY;
       }
@@ -301,7 +299,7 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32 start_time) {
     if (filename[0] == '\0') {
       strcpy(filename, "NONAME.TAP");
       // hack
-      extern uint8_t mem[];
+      extern byte mem[];
       memcpy(mem+0x1397, "NONAME\0", 7);
     }
     /* TODO: Prevent overwrite. For now we always allow it */

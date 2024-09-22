@@ -1,5 +1,4 @@
-#ifndef OSD_H_
-#define OSD_H_
+#pragma once
 
 #include "common.h"
 #include "key.h"
@@ -20,5 +19,3 @@ void osd_toast(char *msg, int vloc, int inverse);
 void osd_open_dialog(char *title, char *globp, osd_dlg_callback cb);
 void osd_close_dialog();
 void osd_process_key(KeyCode key);
-
-#endif
