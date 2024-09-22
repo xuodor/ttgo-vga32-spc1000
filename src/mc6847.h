@@ -10,13 +10,13 @@ public:
 
   MC6847(MC6847 const&) = delete;
   void operator=(MC6847 const&) = delete;
-  void Init(uint8_t *iomem);
+  void Init(byte *iomem);
   void SetMode(int command, byte param);
+  void RefreshScreen();
   void SavePage();
   void RestorePage();
   byte *text_pos(int x, int y);
-  bool screen_mode() { return 0; }
-  void RefreshScreen();
+  bool mode() const { return mode_; }
 
 private:
   void InitColor(int mode);
@@ -28,9 +28,9 @@ private:
 
   int page_;
   int mode_;
-  uint8_t *iomem_;
-  uint8_t *page_buf_;
-  uint8_t *font_internal_;
+  byte *iomem_;
+  byte *page_buf_;
+  byte *font_internal_;
   RGB888 rgb_[12];
   int color_tbl_[6][4];
   byte *semigr_font_0; // semigraphic pattern for mode 0

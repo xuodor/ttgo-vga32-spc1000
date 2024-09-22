@@ -210,7 +210,7 @@ void osd_process_key(KeyCode key) {
 }
 
 void osd_show(int show) {
-  if (show == osd_visible_) return;
+  if (show == osd_visible_ || (show && vdg()->mode() != 0)) return;
 
   if (show) {
     vdg()->SavePage();

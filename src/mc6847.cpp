@@ -1,8 +1,9 @@
 #include "mc6847.h"
+#include "osd.h"
 
 #pragma GCC optimize ("Ofast")
 
-extern uint8_t mc6847_font[];
+extern byte mc6847_font[];
 
 constexpr int kOffsetX_ = 64;
 constexpr int kOffsetY_ = 48;
@@ -33,7 +34,7 @@ enum PaletteIndex {
 
 MC6847::MC6847() : fabgl::VGA8Controller() {}
 
-void MC6847::Init(uint8_t *iomem) {
+void MC6847::Init(byte *iomem) {
   begin();
   setResolution(VGA_640x480_60Hz);
 
@@ -41,7 +42,7 @@ void MC6847::Init(uint8_t *iomem) {
   memset(iomem_, 0, 0x2000);
   font_internal_ = mc6847_font;
 
-  page_buf_ = (uint8_t *)malloc(PAGE_SIZE);
+  page_buf_ = (byte *)malloc(PAGE_SIZE);
   semigr_font_0 = (byte *)malloc(16*12);
   semigr_font_1 = (byte *)malloc(64*12);
 
@@ -52,7 +53,7 @@ void MC6847::Init(uint8_t *iomem) {
   // Initialize semigraphic pattern
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 12; j++) {
-      unsigned char val = 0;
+      byte val = 0;
       if (j < 6) {
         if (i & 0x08) val |= 0xf0;
         if (i & 0x04) val |= 0x0f;
@@ -65,7 +66,7 @@ void MC6847::Init(uint8_t *iomem) {
   }
   for (int i = 0; i < 64; i++) {
     for (int j = 0; j < 12; j++) {
-      unsigned char val = 0;
+      byte val = 0;
       if (j < 4) {
         if (i & 0x20) val |= 0xf0;
         if (i & 0x10) val |= 0x0f;
@@ -141,16 +142,17 @@ void MC6847::RefreshTextSemiGraphic() {
       int yb = y / 12;
       int yf = y % 12;
       int offset = (yb<<5)+(x>>3);
-      uint8_t code = iomem_[page_base + offset];
-      uint8_t attr = iomem_[attr_base + offset];
+      byte code = iomem_[page_base + offset];
+      byte attr = iomem_[attr_base + offset];
       GetFontData(code, attr, &fgColor, &bgColor, &font);
-      uint8_t xf = x & 0x7;
-      uint8_t fb = font[yf];
+      byte xf = x & 0x7;
+      byte fb = font[yf];
       int color = fb & (0x80 >> xf) ? fgColor : bgColor;
       directSetPixel(sx, sy, color);
       directSetPixel(sx+1, sy, color);
     }
   }
+  if (osd_should_close_toast()) osd_show(0);
 }
 
 void MC6847::GetFontData(byte code, byte attr,
@@ -212,7 +214,7 @@ void MC6847::RefreshHiGraphic() {
     for (int sx = 64; sx < 640-64; sx += 2) {
       int x = (sx-64) >> 1;
       int y = (sy-48) >> 1;
-      uint8_t b = iomem_[(y<<5)+(x>>3)];
+      byte b = iomem_[(y<<5)+(x>>3)];
       byte i = x & 0x7;
       int color = b & (0x80 >> i) ? fgColor : bgColor;
       directSetPixel(sx, sy, color);
