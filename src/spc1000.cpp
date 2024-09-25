@@ -210,7 +210,11 @@ void SPC1000::WriteIO(int addr, int data) {
   } else if (addr == 0x4001) {
     ay38910_.Write(data);
   } else if ((addr & 0xe000) == 0x6000) {
-    CasIOWrite(&cas_, data);
+    if (addr & 0x1) {
+      CasWrite(&cas_, data);
+    } else {
+      CasIOWrite(&cas_, data);
+    }
   } else if ((addr & 0xe000) == 0x2000) {
     mc6847_.SetMode((data & 0x08) == 0, data);
   }
@@ -311,7 +315,6 @@ void SPC1000::ProcessEmulatorKey(VirtualKeyItem *item) {
     if (cas_.wfp) FCLOSE(cas_.wfp);
     cas_.button = CAS_PLAY;
     cas_.motor = 1;
-    cas_.startTime = cas_start_time();
     ResetCassette(&cas_);
   } else if (item->vk == fabgl::VK_F9) {
     osd_toast("RECORD", 0, 0);

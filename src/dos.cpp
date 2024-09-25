@@ -252,7 +252,6 @@ void dos_load(char *filename, char *errmsg) {
     dos_build_load_resp(load_params_.dos_buf, errmsg, "\0\0", 2);
   }
   cas->button = CAS_PLAY;
-  cas->startTime = cas_start_time();
   ResetCassette(cas);
 }
 
@@ -270,7 +269,6 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time) {
     dos_reset(db);
     dos_build_list_resp(db);
     cas->button = CAS_PLAY;
-    cas->startTime = start_time;
     res = 1;
     break;
   case DOSCMD_LOAD:
@@ -286,6 +284,8 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time) {
       } else {
         if (feof(cas->rfp)) {
           dos_build_load_resp(load_params_.dos_buf, "READ ERROR", "\0\0", 2);
+          // TODO: After this, force the stop button to not repeat this message
+          // upon subsequent LOAD command.
         }
         cas->button = CAS_PLAY;
       }
