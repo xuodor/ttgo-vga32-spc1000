@@ -124,9 +124,13 @@ WAITR:
 WRITES:
     PUSH AF
     PUSH BC
-    LD BC,6001H
-    XOR A
+    LD BC,SMODE
+    LD A,(IO6000)
+    RES 0,A
+    SET 7,A
     OUT (C),A
+    RES 7,A
+    LD (IO6000),A
     POP BC
     POP AF
     RET
@@ -137,9 +141,13 @@ WRITES:
 WRITEL:
     PUSH AF
     PUSH BC
-    LD BC,6001H
-    LD A,1
+    LD BC,SMODE
+    LD A,(IO6000)
+    SET 0,A
+    SET 7,A
     OUT (C),A
+    RES 7,A
+    LD (IO6000),A
     POP BC
     POP AF
     RET

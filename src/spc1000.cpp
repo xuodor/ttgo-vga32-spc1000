@@ -224,16 +224,13 @@ int SPC1000::ReadMem(int addr) {
 void SPC1000::WriteIO(int addr, int data) {
   if (0x0000 <= addr && addr < 0x2000) {
     io_[addr] = data;
-  } else if (addr == 0x4000) {
-    ay38910_.WrCtrl(data);
-  } else if (addr == 0x4001) {
-    ay38910_.Write(data);
+  } else if ((addr & 0xfffe) == 0x4000) {
+    if (addr & 0x1)
+      ay38910_.Write(data);
+    else
+      ay38910_.WrCtrl(data);
   } else if ((addr & 0xe000) == 0x6000) {
-    if (addr & 0x1) {
-      CasWrite(&cas_, data);
-    } else {
-      CasIOWrite(&cas_, data);
-    }
+    CasIOWrite(&cas_, data);
   } else if ((addr & 0xe000) == 0x2000) {
     mc6847_.SetMode((data & 0x08) == 0, data);
   }
