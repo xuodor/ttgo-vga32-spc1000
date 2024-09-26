@@ -196,6 +196,25 @@ void SPC1000::InitMem() {
   memset(key_matrix_, 0xff, sizeof key_matrix_);
   io_ = (byte *)malloc(0x2000);
   key_table_ = (KeyMat *)malloc(sizeof(KeyMat) * (size_t)fabgl::VK_LAST);
+
+  // Modify KBT for modern keyboard layout
+  mem_[0x1311] = 0x27; // 3b '(AT), :(SPC)
+  mem_[0x1320] = 0x3d;
+  mem_[0x1331] = 0x7c;
+  mem_[0x1341] = 0x5d;
+  mem_[0x1346] = 0x60;
+  mem_[0x1350] = 0x7f;
+  mem_[0x1351] = 0x29;
+  mem_[0x1352] = 0x3a; // 22 :(AT), +(SPC)
+  mem_[0x1355] = 0x28;
+  mem_[0x1359] = 0x22; // 3a "(AT), *(SPC)
+  mem_[0x135d] = 0x2a;
+  mem_[0x1365] = 0x26;
+  mem_[0x1368] = 0x2b;
+  mem_[0x136d] = 0x5e; // 53
+  mem_[0x1379] = 0x5c;
+  mem_[0x138d] = 0x40;
+  mem_[0x138e] = 0x7e;
 }
 
 int SPC1000::ReadMem(int addr) {
@@ -239,10 +258,7 @@ int SPC1000::ReadIO(int addr) {
   return 0;
 }
 
-
 void SPC1000::Run() {
-  int turboState = 0;
-  int prevTurboState = 0;
   double intrTime = INTR_PERIOD;
   simul_.base = get_timestamp_ms();
   simul_.prev = simul_.base;
@@ -270,13 +286,7 @@ void SPC1000::Run() {
         simul_.prev = simul_.cur;
       }
 
-      turboState = cas_.motor || turbo_;
-      if (prevTurboState && !turboState && simul_.cur < tick_) {
-        tick_ = simul_.cur; // adjust timing if turbo state turned off
-      }
-      prevTurboState = turboState;
-
-      while (!turboState && (simul_.cur < tick_)) {
+      while (simul_.cur < tick_) {
         vTaskDelay(1);
         simul_.cur = get_timestamp_ms() - simul_.base;
       }
