@@ -11,6 +11,8 @@ public:
   MC6847(MC6847 const&) = delete;
   void operator=(MC6847 const&) = delete;
   void Init(byte *iomem);
+  void SetFontFace(byte *font);
+  void SetCRTEffect(int enabled);
   void SetMode(int command, byte param);
   void RefreshScreen();
   void SavePage();
@@ -30,11 +32,12 @@ private:
   int mode_;
   byte *iomem_;
   byte *page_buf_;
-  byte *font_internal_;
+  byte *font_;
   RGB888 rgb_[12];
   int color_tbl_[6][4];
   byte semigr_font_0[16*12]; // semigraphic pattern for mode 0
   byte semigr_font_1[64*12]; // semigraphic pattern for mode 1
   int semigr_tbl_[9]; // Color Table for semigraphic
   void (MC6847::*refresh_func_)();
+  int crt_effect_;
 };

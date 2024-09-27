@@ -3,8 +3,6 @@
 
 #pragma GCC optimize ("Ofast")
 
-extern byte mc6847_font[];
-
 constexpr int kOffsetX_ = 64;
 constexpr int kOffsetY_ = 48;
 
@@ -40,7 +38,6 @@ void MC6847::Init(byte *iomem) {
 
   iomem_ = iomem;
   memset(iomem_, 0, 0x2000);
-  font_internal_ = mc6847_font;
 
   page_buf_ = (byte *)malloc(PAGE_SIZE);
 
@@ -76,6 +73,37 @@ void MC6847::Init(byte *iomem) {
         if (i & 0x01) val |= 0x0f;
       }
       semigr_font_1[i * 12 + j] = val;
+    }
+  }
+}
+
+void MC6847::SetFontFace(byte *font_base) {
+  font_ = font_base;
+}
+
+void MC6847::SetCRTEffect(int enabled) {
+  crt_effect_ = enabled;
+  if (crt_effect_) {
+    // Reset the redundant scanlines not to be painted in
+    // vintage CRT mode.
+    byte *font;
+    int fgColor;
+    int bgColor;
+    int page_base = page_ * 0x200;
+    int attr_base = page_base + 0x800;
+    for (int sy = 48; sy < 480-48; sy += 2) {
+      for (int sx = 64; sx < 640-64; sx += 2) {
+        int x = (sx-64) >> 1;
+        int y = (sy-48) >> 1;
+        int yb = y / 12;
+        int yf = y % 12;
+        int offset = (yb<<5)+(x>>3);
+        byte code = iomem_[page_base + offset];
+        byte attr = iomem_[attr_base + offset];
+        GetFontData(code, attr, &fgColor, &bgColor, &font);
+        directSetPixel(sx, sy+1, bgColor);
+        directSetPixel(sx+1, sy+1, bgColor);
+      }
     }
   }
 }
@@ -148,6 +176,10 @@ void MC6847::RefreshTextSemiGraphic() {
       int color = fb & (0x80 >> xf) ? fgColor : bgColor;
       directSetPixel(sx, sy, color);
       directSetPixel(sx+1, sy, color);
+      if (!crt_effect_) {
+        directSetPixel(sx, sy+1, color);
+        directSetPixel(sx+1, sy+1, color);
+      }
     }
   }
   if (osd_should_close_toast()) osd_show(0);
@@ -196,7 +228,7 @@ void MC6847::GetFontData(byte code, byte attr,
     else if (128 <= code && code < 224)
       *fontData = iomem_ + 0x1000+(code-128)*16;
     else
-      *fontData = font_internal_ + (code-32)*12;  // 8x12
+      *fontData = font_ + (code-32)*12;  // 8x12
   }
 }
 

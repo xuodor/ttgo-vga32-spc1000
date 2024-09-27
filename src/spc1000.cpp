@@ -11,6 +11,7 @@
 
 extern byte mem[];
 extern SPC1000 spc;
+extern byte mc6847_font[];
 
 extern "C" {
 
@@ -53,6 +54,9 @@ void SPC1000::Init() {
   cas_.motor = 0;
   cas_.pulse = 0;
   mc6847_.Init(io_);
+  mc6847_.SetFontFace(mc6847_font);
+  mc6847_.SetCRTEffect(1);
+
   osd_init();
   ay38910_.Init(&sound_generator_);
   keyboard_.begin(PS2Preset::KeyboardPort0);
@@ -233,6 +237,10 @@ void SPC1000::WriteIO(int addr, int data) {
     CasIOWrite(&cas_, data);
   } else if ((addr & 0xe000) == 0x2000) {
     mc6847_.SetMode((data & 0x08) == 0, data);
+  } else if (addr == 0x800a) {
+    mc6847_.SetFontFace(data ? mc6847_font : &mem_[0x524a]);
+  } else if (addr == 0x800b) {
+    mc6847_.SetCRTEffect(data);
   }
 }
 
