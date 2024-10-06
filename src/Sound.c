@@ -1,7 +1,22 @@
+/** EMULib Emulation Library *********************************/
+/**                                                         **/
+/**                          Sound.c                        **/
+/**                                                         **/
+/** This file file implements core part of the sound API    **/
+/** and functions needed to log soundtrack into a MIDI      **/
+/** file. See Sound.h for declarations.                     **/
+/**                                                         **/
+/** Copyright (C) Marat Fayzullin 1996-2008                 **/
+/**     You are not allowed to distribute this software     **/
+/**     commercially. Please, notify me, if you make any    **/
+/**     changes to this file.                               **/
 /*************************************************************/
-/** Libsdl sound driver + sound queue processing            **/
+
+/*************************************************************/
+/** Ported to run on ESP32 running FreeRTOS sound queue.    **/
 /** Sound queue is for precise, delayed sound processing.   **/
 /**                             ionique, 2006               **/
+/**                             jindor, 2024                **/
 /*************************************************************/
 
 #include "freertos/FreeRTOS.h"
@@ -39,17 +54,13 @@ void SndLatch(int Chn, int Freq, int Volume) {
     Vol[Chn] = Volume * 30;
 }
 
-void Sound(int Chn, int Freq, int Volume) {
-  SndEnqueue(Chn, Freq, Vol);
-}
-
 void SndQueueInit(void) {
   DevFreq = DEVFREQ;
   queue_ = xQueueCreate(100, sizeof(TSndQEntry));
   LastBufTime = GetTicks();
 }
 
-int SndEnqueue(int Chn, int Freq, int Vol) {
+int Sound(int Chn, int Freq, int Vol) {
   TSndQEntry entry;
   entry.chn = Chn;
   entry.freq = Freq;

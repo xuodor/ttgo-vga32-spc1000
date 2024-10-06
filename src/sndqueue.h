@@ -1,4 +1,3 @@
-
 /*************************************************************/
 /** Sound queue processing                                  **/
 /*************************************************************/
@@ -24,7 +23,6 @@ extern "C" {
 
 void SndQueueInit();
 int SndGetSample();
-void Drum(int Type,int Force);
 
 #ifdef __cplusplus
 }
