@@ -11,12 +11,6 @@ int read_ready_;
 /*************************************************************/
 /** Cassette Tape Processing                                **/
 /*************************************************************/
-/**
- * Reset Cassette structure
- * @param cas cassette structure
- */
-void ResetCassette(Cassette *cas) {
-}
 
 /**
  * Initialize cassette structure
@@ -27,7 +21,6 @@ void InitCassette(Cassette *cas) {
   cas->button = CAS_STOP;
   cas->wfp = NULL;
   cas->rfp = NULL;
-  ResetCassette(cas);
 }
 
 int ReadVal(Cassette *cas) {
@@ -83,10 +76,7 @@ void CasDosCommand(Cassette *cas, byte Value) {
   } else if (cas->dos) {
     cas->dos = 0;
     if (cas->wfp) FCLOSE(cas->wfp);
-    uint32_t start_time = cas_start_time();
-    if (dos_exec(dosbuf_, cas, start_time)) {
-      ResetCassette(cas);
-    }
+    dos_exec(dosbuf_, cas);
   }
 }
 
@@ -107,7 +97,6 @@ void CasIOWrite(Cassette *cas, byte Value) {
           }
         } else {
           cas->motor = 1;
-          ResetCassette(cas);
         }
       }
     }

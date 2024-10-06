@@ -241,67 +241,39 @@ int dos_max_reached() {
 
 void dos_load(char *filename, char *errmsg) {
   Cassette *cas = load_params_.cas;
-  if (cas->rfp) FCLOSE(cas->rfp);
-  if (filename && filename[0]) {
+  // Keep the RP open if it already is. This allows multiple-content
+  // file loading.
+  if (!cas->rfp) {
     cas->rfp = ext_fopen(filename, "rb");
-    /* File open error. Notify user with an error. */
     if (!cas->rfp) {
       dos_build_load_resp(load_params_.dos_buf, "FILE ERROR", "\0\0", 2);
     }
-  } else {
-    dos_build_load_resp(load_params_.dos_buf, errmsg, "\0\0", 2);
   }
   cas->button = CAS_PLAY;
-  ResetCassette(cas);
 }
 
 /**
  * Executes the received dos command.
- * @return 1 if a command was recognized and executed.
  */
-int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time) {
+void dos_exec(DosBuf *db, Cassette *cas) {
   char filename[16+1];
   byte cmd = dos_get_command(db);
-  int res = 0;
 
   switch (cmd) {
   case DOSCMD_VIEW:
     dos_reset(db);
     dos_build_list_resp(db);
     cas->button = CAS_PLAY;
-    res = 1;
     break;
   case DOSCMD_LOAD:
     osd_set_filename_(db->buf, filename);
     dos_reset(db);
     load_params_.cas = cas;
     load_params_.dos_buf = db;
-    if (filename[0] == '\0') {
-      if (!cas->rfp) {
-        if (!osd_dialog_on()) {
-          osd_open_dialog("LOAD", "*.TAP", dos_load);
-        }
-      } else {
-        if (feof(cas->rfp)) {
-          dos_build_load_resp(load_params_.dos_buf, "READ ERROR", "\0\0", 2);
-          // TODO: After this, force the stop button to not repeat this message
-          // upon subsequent LOAD command.
-        }
-        cas->button = CAS_PLAY;
-      }
-    } else {
-      if (cas->rfp) FCLOSE(cas->rfp);
-      dos_load(filename, NULL);
-    }
+    dos_load(filename, "FILE ERROR");
     break;
   case DOSCMD_SAVE:
     osd_set_filename_(db->buf, filename);
-    if (filename[0] == '\0') {
-      strcpy(filename, "NONAME.TAP");
-      // hack
-      extern byte mem[];
-      memcpy(mem+0x1397, "NONAME\0", 7);
-    }
     /* TODO: Prevent overwrite. For now we always allow it */
     dos_reset(db);
     if ((cas->wfp = ext_fopen(filename, "wb")) == NULL) {
@@ -309,7 +281,6 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time) {
     }
     cas->button = CAS_REC;
     reload_ = 1;
-    res = 1;
     break;
   case DOSCMD_DEL:
     osd_set_filename_(db->buf, filename);
@@ -317,6 +288,7 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time) {
     ext_remove(filename);
     cas->button = CAS_STOP;
     if (cas->rfp) FCLOSE(cas->rfp);
+    reload_ = 1;
     break;
   case DOSCMD_END:
     if (reload_) {
@@ -330,7 +302,6 @@ int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time) {
     if (cas->rfp) FCLOSE(cas->rfp);
     break;
   }
-  return res;
 }
 
 //#define TEST

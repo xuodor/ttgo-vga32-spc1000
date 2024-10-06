@@ -330,19 +330,17 @@ void SPC1000::ProcessEmulatorKey(VirtualKeyItem *item) {
     if (cas_.wfp) FCLOSE(cas_.wfp);
     cas_.button = CAS_PLAY;
     cas_.motor = 1;
-    ResetCassette(&cas_);
   } else if (item->vk == fabgl::VK_F9) {
     osd_toast("RECORD", 0, 0);
     if (cas_.rfp) FCLOSE(cas_.rfp);
     if (cas_.wfp) FCLOSE(cas_.wfp);
     cas_.button = CAS_REC;
     cas_.motor = 1;
-    ResetCassette(&cas_);
   } else if (item->vk == fabgl::VK_F10) {
     osd_toast("STOP", 0, 0);
-    cas_.button = CAS_STOP;
-    cas_.motor = 0;
     if (cas_.rfp) FCLOSE(cas_.rfp);
     if (cas_.wfp) FCLOSE(cas_.wfp);
+    cas_.button = CAS_STOP;
+    cas_.motor = 0;
   }
 }

@@ -25,7 +25,7 @@ typedef struct {
 extern "C" {
 #endif
 
-int dos_exec(DosBuf *db, Cassette *cas, uint32_t start_time);
+void dos_exec(DosBuf *db, Cassette *cas);
 void dos_putb(DosBuf *db, int b);
 void dos_rewind(DosBuf *db);
 void dos_reset(DosBuf *db);

@@ -53,9 +53,9 @@ FGDEL:      EQU 0D6H
 
     incbin 'src/spcall.rom'
 
-;;; Rewrite cassette IOCS to speed up read/write
-;;; No more timing-based access but direct bit 0
-;;; manipulation.
+;;; Rewrite cassette IOCS to speed up
+;;; read/write. Replace PWM for 1/0
+;;; with direct SMODE/0 bit banging.
     seek 019DH
     org  019DH
 CLOAD4:
@@ -118,7 +118,7 @@ WAITR:
     org 02D9H
     CALL DISCB1
 
-    ;; Write 0 by clearing bit 0
+    ;; Write 0
     seek 03CBH
     org 03CBH
 WRITES:
@@ -135,7 +135,7 @@ WRITES:
     POP AF
     RET
 
-    ;;  Write 1 by setting bit 0
+    ;;  Write 1
     seek 03EDH
     org  03EDH
 WRITEL:
@@ -151,6 +151,8 @@ WRITEL:
     POP BC
     POP AF
     RET
+
+;;; Discard 1 bit away
 DISCB1:
     CALL EDGE
     CALL WAITR
@@ -173,7 +175,7 @@ DISCB1:
     org 3000H
     DEFW ROPEN
 
-;;; Rewrite CROPEN for new LOAD command processing
+;;; Rewrite CROPEN for new LOAD command.
     seek 3865H
     org 3865H
 CROPEN:
@@ -214,7 +216,7 @@ DOSREQ:
     JR Z, DOSREQ1
 
     ;; Do not display WRITING: <FILNAME>
-    LD HL,0C18H                 ; JR FSAVE1
+    LD HL,0C18H     ; JR FSAVE1
     LD (009FH),HL
     CALL FSAVE
 DOSREQ1:
@@ -243,13 +245,9 @@ DIR:
     POP HL
     RET
 
-CLRFN:
-    XOR A
-    LD (FILNAM),A
-    RET
-
-;;; Read program name from the command param and set to FIB.
-;;; Used by LOAD/SAVE <PROGRAM>
+;;; Read program name from the command
+;;; param and set to FIB. Syntax error
+;;; if no name is given.
 SETFN:
     CALL CLRFN
     CALL BCFTCH
@@ -275,8 +273,9 @@ SETFN:
     LD (DE),A
     RET
 
-;;; Lets assembly programs run automatically after loading.
-;;; Setting MTEXEC in FIB to the exec addr does the trick.
+;;; Lets assembly programs run
+;;; automatically after loading.
+;;; Setting MTEXEC in FIB.
 MLEXEC:
     LD HL,(MTEXEC)
     LD A,H
@@ -295,7 +294,8 @@ ROPND:
     LD H,B
     RET
 
-;;; Disable LOAD? command to repurpose the VERIFY code space
+;;; Disable LOAD? command to utilize
+;;; VERIFY code space.
     seek 3939H
     org 3939H
     NOP
@@ -324,8 +324,11 @@ CWOPEN:
     LD (FILMOD),A
     LD C,L
     LD B,H
-    call SETFN
-    DEFB 3Eh                    ; LD A,
+    CALL SETFN
+    LD A,(FILNAM)
+    OR A
+    JP Z,SERROR
+    DEFB 3Eh      ; LD A,
 DOSCMF:
     DEFB FGSAVE
     CALL DOSREQ
@@ -353,14 +356,16 @@ DOSDEL:
     LD (FILEFG),A
     LD A,FGDEL
     LD (DOSCMF),A
-    CALL CWOPEN                 ; Use CWOPEN to run DEL
+    CALL CWOPEN  ; for both save/del
     LD H,B
     LD L,C
     LD A,FGSAVE
     LD (DOSCMF),A
-    LD A,(FILNAM)
-    OR A
-    JP Z,SERROR
+    RET
+
+CLRFN:
+    XOR A
+    LD (FILNAM),A
     RET
 
     ;; Stop button after SAVE
@@ -374,11 +379,11 @@ CBRSHM:
 ;;; Rename LET to DIR
     seek 679BH
     org 679BH
-    DEFB 44H, 49H, 0D2H         ; DOS
+    DEFB 44H, 49H, 0D2H   ; DOS
 
 ;;; Add DEL cmd
 ;;; ERROR -> ERM
     seek 680CH
     org 680CH
-    DEFB 44H, 45H, 0CCH         ; DEL
-    DEFB 45H, 52H, 0CDH         ; ERM
+    DEFB 44H, 45H, 0CCH    ; DEL
+    DEFB 45H, 52H, 0CDH    ; ERM
