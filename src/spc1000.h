@@ -39,6 +39,8 @@ public:
 
 private:
   int KeyIOMatrix(int index) { return key_matrix_[index]; }
+  int ReadConfig(const char* attr, int defvalue);
+  void UpdateConfig(const char* attr, int value);
   void InitMem();
   void PollKeyboard();
   void ProcessEmulatorKey(VirtualKeyItem *item);
@@ -62,4 +64,5 @@ private:
   int turbo_;
   int32_t kbd_timer_;
   SPCSimul simul_;
+  int nvs_init_;
 };

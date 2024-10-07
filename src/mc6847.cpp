@@ -249,6 +249,10 @@ void MC6847::RefreshHiGraphic() {
       int color = b & (0x80 >> i) ? fgColor : bgColor;
       directSetPixel(sx, sy, color);
       directSetPixel(sx+1, sy, color);
+      if (!crt_effect_) {
+        directSetPixel(sx, sy+1, color);
+        directSetPixel(sx+1, sy+1, color);
+      }
     }
   }
 }

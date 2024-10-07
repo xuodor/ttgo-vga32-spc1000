@@ -4,6 +4,8 @@
 #include "fabutils.h"
 #include "sysdep.h"
 #include "osd.h"
+#include "nvs_flash.h"
+#include "nvs.h"
 
 #define I_PERIOD 4000
 #define INTR_PERIOD 16.666
@@ -53,9 +55,21 @@ void SPC1000::Init() {
   InitCassette(&cas_);
   cas_.motor = 0;
   cas_.pulse = 0;
+
+  esp_err_t err = nvs_flash_init();
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES
+      || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    // NVS partition may have been truncated and needs erasing.
+    // Retry nvs_flash_init.
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    err = nvs_flash_init();
+  }
+  nvs_init_ = (err == ESP_OK);
+
   mc6847_.Init(io_);
-  mc6847_.SetFontFace(mc6847_font);
-  mc6847_.SetCRTEffect(1);
+
+  mc6847_.SetFontFace(ReadConfig("font_face", 1) ? mc6847_font : &mem_[0x524a]);
+  mc6847_.SetCRTEffect(ReadConfig("vintage_crt", 1));
 
   osd_init();
   ay38910_.Init(&sound_generator_);
@@ -195,6 +209,42 @@ void SPC1000::Init() {
   key_table_[fabgl::VK_9] = { 9, 0x80 };
 }
 
+int SPC1000::ReadConfig(const char* attr, int defvalue) {
+  esp_err_t err;
+  nvs_handle_t nvs_handle;
+  int32_t res;
+
+  if (!nvs_init_) return defvalue;
+
+  err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+  if (err != ESP_OK) {
+    return defvalue;
+  }
+
+  err = nvs_get_i32(nvs_handle, attr, &res);
+  if (err != ESP_OK) {
+    res = defvalue;
+  }
+  nvs_close(nvs_handle);
+  return res;
+}
+
+void SPC1000::UpdateConfig(const char *attr, int value) {
+  esp_err_t err;
+  nvs_handle_t nvs_handle;
+
+  if (!nvs_init_) return;
+
+  err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+  if (err != ESP_OK) return;
+
+  err = nvs_set_i32(nvs_handle, attr, value);
+  if (err == ESP_OK) {
+    nvs_commit(nvs_handle);
+  }
+  nvs_close(nvs_handle);
+}
+
 void SPC1000::InitMem() {
   mem_ = mem;
   memset(key_matrix_, 0xff, sizeof key_matrix_);
@@ -239,8 +289,10 @@ void SPC1000::WriteIO(int addr, int data) {
     mc6847_.SetMode((data & 0x08) == 0, data);
   } else if (addr == 0x800a) {
     mc6847_.SetFontFace(data ? mc6847_font : &mem_[0x524a]);
+    UpdateConfig("font_face", data);
   } else if (addr == 0x800b) {
     mc6847_.SetCRTEffect(data);
+    UpdateConfig("vintage_crt", data);
   }
 }
 
